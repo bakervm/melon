@@ -3,7 +3,6 @@ extern crate melon;
 use melon::shell::Shell;
 use melon::program::Program;
 use melon::vm::VM;
-use melon::errors::*;
 
 struct TextConsole;
 
