@@ -20,6 +20,7 @@ use instruction::Instruction;
 use typedef::*;
 
 /// The container for a program
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Program {
     /// The version of the VM API
     pub core_version: String,

@@ -20,8 +20,9 @@ use typedef::*;
 use instruction::Instruction;
 use program::Program;
 use shell::Shell;
-use std::io::Cursor;
-use byteorder::{BigEndian, ByteOrder, ReadBytesExt};
+use byteorder::{BigEndian, ByteOrder};
+
+type Endianess = BigEndian;
 
 /// A constant used to calulate the actually used memory of the VM
 pub const KILOBYTE: Address = 1024;
@@ -33,10 +34,13 @@ const MAX_MEM_SIZE_KILOBYTE: Address = 64;
 /// The state of the VM
 #[derive(Serialize, Deserialize, Default)]
 pub struct VM {
+    /// The program counter
     pc: Address,
-    pc_locked: bool,
+    /// The program data
     program: Vec<Instruction>,
+    /// The stack pointer
     sp: Address,
+    /// The base pointer
     bp: Address,
     /// The memory allocated and used by the VM
     pub mem: Vec<SmallUInt>,
@@ -96,11 +100,7 @@ impl VM {
 
     /// Advances the program counter
     fn advance_pc(&mut self) {
-        if self.pc_locked {
-            self.pc_locked = false;
-        } else {
-            self.pc += 1;
-        }
+        self.pc += 1;
     }
 
     /// Returns the instruction at the current pc
@@ -108,7 +108,7 @@ impl VM {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
             Ok(current_instruction.clone())
         } else {
-            bail!("could no find instruction at {:04X}", self.pc);
+            bail!("could no find instruction at ${:04X}", self.pc);
         }
     }
 
@@ -130,14 +130,10 @@ impl VM {
     fn do_cycle<T: Shell>(&mut self, shell: &mut T) -> Result<()> {
         let current_instruction = self.current_instruction()?;
 
-        self.handle_instruction(current_instruction, shell)?;
-
         self.advance_pc();
 
-        Ok(())
-    }
+        self.handle_instruction(current_instruction, shell)?;
 
-    fn pop(&mut self) -> Result<()> {
         Ok(())
     }
 
@@ -155,7 +151,7 @@ impl VM {
     fn read_uint(&mut self, addr: Address) -> UInt {
         let inner_addr_start = addr as usize;
 
-        let value = <BigEndian as ByteOrder>::read_u16(&mut self.mem[inner_addr_start..]);
+        let value = <Endianess as ByteOrder>::read_u16(&mut self.mem[inner_addr_start..]);
 
         value
     }
@@ -164,7 +160,7 @@ impl VM {
     fn write_uint(&mut self, addr: Address, value: UInt) {
         let inner_addr_start = addr as usize;
 
-        <BigEndian as ByteOrder>::write_u16(&mut self.mem[inner_addr_start..], value);
+        <Endianess as ByteOrder>::write_u16(&mut self.mem[inner_addr_start..], value);
     }
 }
 
@@ -181,7 +177,7 @@ mod tests {
 
         let inner_addr_start = addr as usize;
 
-        <BigEndian as ByteOrder>::write_u16(&mut test_data[inner_addr_start..], value);
+        <Endianess as ByteOrder>::write_u16(&mut test_data[inner_addr_start..], value);
 
         assert_eq!(test_data, vec![0, 1, 2, 0x22, 0x33, 5, 6, 7, 8, 9]);
     }
