@@ -41,7 +41,7 @@ pub trait Shell: Send {
     }
 
     /// React to the `Int` instruction and process the given signal
-    fn int(&mut self, vm: &mut VM, signal: Address) -> Result<()> {
+    fn int(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
         Ok(())
     }
 }

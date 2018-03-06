@@ -118,7 +118,7 @@ impl VM {
         shell: &mut T,
     ) -> Result<()> {
         match instruction {
-            Instruction::Int(addr) => shell.int(self, addr)?,
+            Instruction::Int(signal) => shell.int(self, signal)?,
             _ => bail!("instruction {:?} is not yet implemented", instruction),
         }
 

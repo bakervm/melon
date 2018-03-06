@@ -51,7 +51,7 @@ pub enum Instruction {
     StoreI8(Address),
     StoreI16(Address),
 
-    Int(Address),
+    Int(UInt),
 
     Call(Address),
     Ret,
