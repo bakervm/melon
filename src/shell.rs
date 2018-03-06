@@ -40,7 +40,7 @@ pub trait Shell: Send {
         Ok(())
     }
 
-    /// React to the `Int` instruction
+    /// React to the `Int` instruction and process the given signal
     fn int(&mut self, vm: &mut VM, signal: Address) -> Result<()> {
         Ok(())
     }

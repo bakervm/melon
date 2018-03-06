@@ -18,7 +18,7 @@
 
 #![deny(missing_docs)]
 
-//! A library for creating frontends to the melon backend.
+//! A library for creating retro computing platforms.
 //!
 //! # Introduction
 //! When creating a virtual machine you first have to think about the usecase. Where does the VM

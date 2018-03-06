@@ -1,2 +1,2 @@
 # melon
-A library for creating retro gaming platforms
+A library for creating retro computing platforms
