@@ -28,13 +28,28 @@ pub enum Instruction {
     I8(IntegerInstruction),
     I16(IntegerInstruction),
 
-    /// One multibyte constant is actually split into multiple `PushConst` instructions by the compiler
-    PushConst(SmallUInt),
-    /// This instruction has to be typed by the compiler, so we know how many bytes to pull at runtime
-    PushFromAddr(Address),
+    PushConstU8(SmallUInt),
+    PushConstU16(UInt),
+    PushConstI8(SmallInt),
+    PushConstI16(Int),
+
+    PushU8FromAddr(Address),
+    PushU16FromAddr(Address),
+    PushI8FromAddr(Address),
+    PushI16FromAddr(Address),
+
+    // These are always u16
     PushFromReg(Register),
-    Load(Address),
-    Store(Address),
+
+    LoadU8(Address),
+    LoadU16(Address),
+    LoadI8(Address),
+    LoadI16(Address),
+
+    StoreU8(Address),
+    StoreU16(Address),
+    StoreI8(Address),
+    StoreI16(Address),
 
     Int(Address),
 

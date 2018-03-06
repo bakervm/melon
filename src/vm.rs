@@ -59,11 +59,10 @@ impl VM {
             "wrong core version"
         );
 
-        if let Some(ref mem_size) = program.mem_size {
-            ensure!(
-                mem_size < &MAX_MEM_SIZE_KILOBYTE,
-                "requested memory too big"
-            );
+        if let Some(mem_size) = program.mem_size {
+            ensure!(mem_size < MAX_MEM_SIZE_KILOBYTE, "requested memory too big");
+
+            ensure!(mem_size > 0, "requested memory too small");
         }
 
         self.reset(&program)?;
@@ -108,7 +107,7 @@ impl VM {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
             Ok(current_instruction.clone())
         } else {
-            bail!("could no find instruction at ${:04X}", self.pc);
+            bail!("could no find instruction at {:04X}", self.pc);
         }
     }
 
