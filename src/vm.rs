@@ -432,11 +432,31 @@ mod tests {
     }
 
     #[test]
-    fn bogus_execution() {
+    fn simple_execution() {
         let mut shell = helper::generate_shell();
         let program = helper::generate_program();
 
         let mut vm = VM::default();
+        vm.exec(program, &mut shell).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn vm_without_program() {
+        let mut vm = VM::default();
+        vm.pc = 20;
+
+        vm.current_instruction().unwrap();
+    }
+
+    #[test]
+    fn pc_out_of_bounds() {
+        let mut shell = helper::generate_shell();
+        let program = helper::generate_program();
+
+        let mut vm = VM::default();
+        vm.pc = (program.instructions.len() + 20) as Address;
+
         vm.exec(program, &mut shell).unwrap();
     }
 }
