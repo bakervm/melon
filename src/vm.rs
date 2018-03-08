@@ -290,6 +290,7 @@ mod tests {
                 Instruction::PushConstU16(0xFFFF),
                 Instruction::PushConstI8(-120),
                 Instruction::PushConstI16(-32000),
+                Instruction::Int(123),
             ]
         }
     }
