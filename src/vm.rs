@@ -122,13 +122,13 @@ impl VM {
         match instruction {
             Instruction::Int(0) => self.halt(),
             Instruction::Int(signal) => shell.int(self, signal)?,
-            Instruction::PushConstU8(value) => self.push_const_u8(value),
-            Instruction::PushConstU16(value) => self.push_const_u16(value),
-            Instruction::PushConstI8(value) => self.push_const_i8(value),
-            Instruction::PushConstI16(value) => self.push_const_i16(value),
-            Instruction::LoadReg(reg) => self.load_reg(reg),
-            Instruction::Load(ty, addr) => self.load(ty, addr),
-            Instruction::Store(ty, addr) => self.store(ty, addr),
+            Instruction::PushConstU8(value) => self.push_const_u8(value)?,
+            Instruction::PushConstU16(value) => self.push_const_u16(value)?,
+            Instruction::PushConstI8(value) => self.push_const_i8(value)?,
+            Instruction::PushConstI16(value) => self.push_const_i16(value)?,
+            Instruction::LoadReg(reg) => self.load_reg(reg)?,
+            Instruction::Load(ty, addr) => self.load(ty, addr)?,
+            Instruction::Store(ty, addr) => self.store(ty, addr)?,
             _ => bail!("instruction {:?} is not yet implemented", instruction),
         }
 
@@ -146,78 +146,101 @@ impl VM {
         Ok(())
     }
 
+    /// Stops execution and shuts down the VM
     fn halt(&mut self) {
         self.halted = true;
     }
 
+    /// Helper function to ensure the validity of a memory address
+    fn ensure_valid_mem_addr(&mut self, addr: Address) -> Result<()> {
+        ensure!(
+            addr < (self.mem.len() as Address),
+            "memory address out of bounds"
+        );
+
+        Ok(())
+    }
+
     /// Returns the small uint at the given address
-    fn read_u8(&mut self, addr: Address) -> SmallUInt {
-        self.mem[addr as usize]
+    fn read_u8(&mut self, addr: Address) -> Result<SmallUInt> {
+        self.ensure_valid_mem_addr(addr)?;
+
+        Ok(self.mem[addr as usize])
     }
 
     /// Writes the given small uint to the given address
-    fn write_u8(&mut self, addr: Address, value: SmallUInt) {
+    fn write_u8(&mut self, addr: Address, value: SmallUInt) -> Result<()> {
+        self.ensure_valid_mem_addr(addr)?;
+
         self.mem[addr as usize] = value;
+
+        Ok(())
     }
 
     /// Returns the uint at the given address
-    fn read_u16(&mut self, addr: Address) -> UInt {
+    fn read_u16(&mut self, addr: Address) -> Result<UInt> {
+        self.ensure_valid_mem_addr(addr + 1)?;
+
         let inner_addr_start = addr as usize;
 
         let value = <Endianess as ByteOrder>::read_u16(&mut self.mem[inner_addr_start..]);
 
-        value
+        Ok(value)
     }
 
     /// Writes the given uint to the given address
-    fn write_u16(&mut self, addr: Address, value: UInt) {
+    fn write_u16(&mut self, addr: Address, value: UInt) -> Result<()> {
+        self.ensure_valid_mem_addr(addr + 1)?;
+
         let inner_addr_start = addr as usize;
 
         <Endianess as ByteOrder>::write_u16(&mut self.mem[inner_addr_start..], value);
+
+        Ok(())
     }
 
     /// Helper method for popping a SmallUInt value off the stack
-    fn pop_u8(&mut self) -> SmallUInt {
+    fn pop_u8(&mut self) -> Result<SmallUInt> {
         let addr = self.sp;
 
-        let value = self.read_u8(addr);
+        let value = self.read_u8(addr)?;
 
         self.sp += 1;
 
-        value
+        Ok(value)
     }
 
     /// Helper method for popping a UInt value off the stack
-    fn pop_u16(&mut self) -> UInt {
+    fn pop_u16(&mut self) -> Result<UInt> {
         let addr = self.sp;
 
-        let value = self.read_u16(addr);
+        let value = self.read_u16(addr)?;
 
         self.sp += 2;
 
-        value
+        Ok(value)
     }
 
     /// Helper method for popping a SmallInt value off the stack
-    fn pop_i8(&mut self) -> SmallInt {
+    fn pop_i8(&mut self) -> Result<SmallInt> {
         let addr = self.sp;
 
-        let value = self.read_u8(addr);
+        let value = self.read_u8(addr)?;
 
         self.sp += 1;
 
-        value as SmallInt
+        Ok(value as SmallInt)
     }
 
     /// Helper method for popping a Int value off the stack
-    fn pop_i16(&mut self) -> Int {
+    fn pop_i16(&mut self) -> Result<Int> {
         let addr = self.sp;
 
-        let value = self.read_u16(addr);
+        let value = self.read_u16(addr)?;
 
         self.sp += 2;
 
-        value as Int
+        Ok(value as Int)
     }
 
     // ####################
@@ -225,77 +248,81 @@ impl VM {
     // ####################
 
     /// Handler for `Instruction::PushConstU8(SmallUInt)`
-    fn push_const_u8(&mut self, value: SmallUInt) {
+    fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
         self.sp -= 1;
 
         let addr = self.sp;
 
-        self.write_u8(addr, value);
+        self.write_u8(addr, value)
     }
 
     /// Handler for `Instruction::PushConstU16(UInt)`
-    fn push_const_u16(&mut self, value: UInt) {
+    fn push_const_u16(&mut self, value: UInt) -> Result<()> {
         self.sp -= 2;
 
         let addr = self.sp;
 
-        self.write_u16(addr, value);
+        self.write_u16(addr, value)
     }
 
     /// Handler for `Instruction::PushConstI8(SmallInt)`
-    fn push_const_i8(&mut self, value: SmallInt) {
+    fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
         self.sp -= 1;
 
         let addr = self.sp;
 
-        self.write_u8(addr, value as SmallUInt);
+        self.write_u8(addr, value as SmallUInt)
     }
 
     /// Handler for `Instruction::PushConstI16(Int)`
-    fn push_const_i16(&mut self, value: Int) {
+    fn push_const_i16(&mut self, value: Int) -> Result<()> {
         self.sp -= 2;
 
         let addr = self.sp;
 
-        self.write_u16(addr, value as UInt);
+        self.write_u16(addr, value as UInt)
     }
 
     /// Handler for `Instruction::LoadReg(Register)`
-    fn load_reg(&mut self, reg: Register) {
+    fn load_reg(&mut self, reg: Register) -> Result<()> {
         let ptr = match reg {
             Register::StackPtr => self.sp,
             Register::BasePtr => self.bp,
         };
 
-        self.push_const_u16(ptr);
+        self.push_const_u16(ptr)
     }
 
     /// Handler for `Instruction::Load(IntegerType, Address)`
-    fn load(&mut self, ty: IntegerType, addr: Address) {
+    fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
-                let value = self.read_u8(addr);
-                self.push_const_u8(value);
+                let value = self.read_u8(addr)?;
+                self.push_const_u8(value)?;
             }
             IntegerType::U16 | IntegerType::I16 => {
-                let value = self.read_u16(addr);
-                self.push_const_u16(value);
+                let value = self.read_u16(addr)?;
+                self.push_const_u16(value)?;
             }
         }
+
+        Ok(())
     }
 
     /// Handler for `Instruction::Store(IntegerType, Address)`
-    fn store(&mut self, ty: IntegerType, addr: Address) {
+    fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
-                let value = self.pop_u8();
-                self.write_u8(addr, value);
+                let value = self.pop_u8()?;
+                self.write_u8(addr, value)?;
             }
             IntegerType::U16 | IntegerType::I16 => {
-                let value = self.pop_u16();
-                self.write_u16(addr, value);
+                let value = self.pop_u16()?;
+                self.write_u16(addr, value)?;
             }
         }
+
+        Ok(())
     }
 }
 
@@ -306,7 +333,7 @@ mod tests {
 
     mod helper {
         use program::Program;
-        use instruction::Instruction;
+        use instruction::{Instruction, IntegerType, Register};
         use shell::Shell;
 
         #[derive(Default)]
@@ -327,7 +354,7 @@ mod tests {
                 core_version: env!("CARGO_PKG_VERSION").to_owned(),
                 shell_id: "__BOGUS_SHELL__".to_owned(),
                 instructions: generate_instructions(),
-                mem_size: None,
+                mem_size: Some(63),
             }
         }
 
@@ -337,6 +364,16 @@ mod tests {
                 Instruction::PushConstU16(0xFFFF),
                 Instruction::PushConstI8(-120),
                 Instruction::PushConstI16(-32000),
+                Instruction::LoadReg(Register::StackPtr),
+                Instruction::LoadReg(Register::BasePtr),
+                Instruction::Store(IntegerType::U8, 0xABCD),
+                Instruction::Store(IntegerType::U16, 0xACBD),
+                Instruction::Store(IntegerType::I8, 0xBACD),
+                Instruction::Store(IntegerType::I16, 0xABDC),
+                Instruction::Load(IntegerType::U8, 0xABCD),
+                Instruction::Load(IntegerType::U16, 0xACBD),
+                Instruction::Load(IntegerType::I8, 0xBACD),
+                Instruction::Load(IntegerType::I16, 0xABDC),
                 Instruction::Int(123),
             ]
         }
@@ -382,7 +419,7 @@ mod tests {
             let test_value = rng.gen();
 
             vm.push_const_u8(test_value);
-            assert_eq!(vm.pop_u8(), test_value);
+            assert_eq!(vm.pop_u8().unwrap(), test_value);
         }
     }
 
@@ -397,7 +434,7 @@ mod tests {
             let test_value = rng.gen();
 
             vm.push_const_i8(test_value);
-            assert_eq!(vm.pop_i8(), test_value);
+            assert_eq!(vm.pop_i8().unwrap(), test_value);
         }
     }
 
@@ -412,7 +449,7 @@ mod tests {
             let test_value = rng.gen();
 
             vm.push_const_u16(test_value);
-            assert_eq!(vm.pop_u16(), test_value);
+            assert_eq!(vm.pop_u16().unwrap(), test_value);
         }
     }
 
@@ -427,7 +464,7 @@ mod tests {
             let test_value = rng.gen();
 
             vm.push_const_i16(test_value);
-            assert_eq!(vm.pop_i16(), test_value);
+            assert_eq!(vm.pop_i16().unwrap(), test_value);
         }
     }
 
@@ -470,5 +507,16 @@ mod tests {
             let mut vm = VM::default();
             vm.exec(program, &mut shell).unwrap();
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn mem_too_small() {
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+        program.mem_size = Some(1);
+
+        let mut vm = VM::default();
+        vm.exec(program, &mut shell).unwrap();
     }
 }
