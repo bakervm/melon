@@ -459,4 +459,16 @@ mod tests {
 
         vm.exec(program, &mut shell).unwrap();
     }
+
+    #[test]
+    fn int_exec() {
+        for i in 0..3000 {
+            let mut shell = helper::generate_shell();
+            let mut program = helper::generate_program();
+            program.instructions = vec![Instruction::Int(i)];
+
+            let mut vm = VM::default();
+            vm.exec(program, &mut shell).unwrap();
+        }
+    }
 }
