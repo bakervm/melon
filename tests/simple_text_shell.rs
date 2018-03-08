@@ -18,15 +18,17 @@
 
 extern crate melon;
 
-use melon::{Instruction, VM, Program, Shell};
+use melon::{Program, Shell, VM};
 
 struct TextConsole {
-    current_line: String,
+    _current_line: String,
 }
 
 impl TextConsole {
     pub fn new() -> TextConsole {
-        TextConsole { current_line: String::new() }
+        TextConsole {
+            _current_line: String::new(),
+        }
     }
 }
 
