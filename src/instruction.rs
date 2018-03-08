@@ -52,15 +52,11 @@ pub enum Instruction {
     /// Loads a u16 from the given register and pushes it onto the stack
     LoadReg(Register),
 
-    LoadU8(Address),
-    LoadU16(Address),
-    LoadI8(Address),
-    LoadI16(Address),
+    /// Loads a value from the given address and pushes it onto the stack
+    Load(IntegerType, Address),
 
-    StoreU8(Address),
-    StoreU16(Address),
-    StoreI8(Address),
-    StoreI16(Address),
+    /// Pops the top value off the stack and stores it at the given address
+    Store(IntegerType, Address),
 
     Dup(IntegerType),
     Drop(IntegerType),

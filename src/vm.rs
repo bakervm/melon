@@ -17,7 +17,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use typedef::*;
-use instruction::Instruction;
+use instruction::{Instruction, IntegerType, Register};
 use program::Program;
 use shell::Shell;
 use byteorder::{BigEndian, ByteOrder};
@@ -120,11 +120,15 @@ impl VM {
         shell: &mut T,
     ) -> Result<()> {
         match instruction {
+            Instruction::Int(0) => self.halt(),
             Instruction::Int(signal) => shell.int(self, signal)?,
             Instruction::PushConstU8(value) => self.push_const_u8(value),
             Instruction::PushConstU16(value) => self.push_const_u16(value),
             Instruction::PushConstI8(value) => self.push_const_i8(value),
             Instruction::PushConstI16(value) => self.push_const_i16(value),
+            Instruction::LoadReg(reg) => self.load_reg(reg),
+            Instruction::Load(ty, addr) => self.load(ty, addr),
+            Instruction::Store(ty, addr) => self.store(ty, addr),
             _ => bail!("instruction {:?} is not yet implemented", instruction),
         }
 
@@ -140,6 +144,10 @@ impl VM {
         self.handle_instruction(current_instruction, shell)?;
 
         Ok(())
+    }
+
+    fn halt(&mut self) {
+        self.halted = true;
     }
 
     /// Returns the small uint at the given address
@@ -251,6 +259,44 @@ impl VM {
 
         self.write_u16(addr, value as UInt);
     }
+
+    /// Handler for `Instruction::LoadReg(Register)`
+    fn load_reg(&mut self, reg: Register) {
+        let ptr = match reg {
+            Register::StackPtr => self.sp,
+            Register::BasePtr => self.bp,
+        };
+
+        self.push_const_u16(ptr);
+    }
+
+    /// Handler for `Instruction::Load(IntegerType, Address)`
+    fn load(&mut self, ty: IntegerType, addr: Address) {
+        match ty {
+            IntegerType::U8 | IntegerType::I8 => {
+                let value = self.read_u8(addr);
+                self.push_const_u8(value);
+            }
+            IntegerType::U16 | IntegerType::I16 => {
+                let value = self.read_u16(addr);
+                self.push_const_u16(value);
+            }
+        }
+    }
+
+    /// Handler for `Instruction::Store(IntegerType, Address)`
+    fn store(&mut self, ty: IntegerType, addr: Address) {
+        match ty {
+            IntegerType::U8 | IntegerType::I8 => {
+                let value = self.pop_u8();
+                self.write_u8(addr, value);
+            }
+            IntegerType::U16 | IntegerType::I16 => {
+                let value = self.pop_u16();
+                self.write_u16(addr, value);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -265,7 +311,7 @@ mod tests {
 
         #[derive(Default)]
         pub struct BogusShell {
-            data: [u8; 8],
+            _data: [u8; 8],
         }
 
         impl Shell for BogusShell {
