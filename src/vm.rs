@@ -330,6 +330,7 @@ impl VM {
 mod tests {
     use super::*;
     use rand::{self, Rng};
+    use instruction::{Instruction, IntegerType, Register};
 
     mod helper {
         use program::Program;
@@ -515,6 +516,57 @@ mod tests {
         let mut shell = helper::generate_shell();
         let mut program = helper::generate_program();
         program.mem_size = Some(1);
+
+        let mut vm = VM::default();
+        vm.exec(program, &mut shell).unwrap();
+    }
+
+    #[test]
+    #[should_panic] // TODO: This should be removed in the future
+    fn all_instructions() {
+        let instr = vec![
+            Instruction::Add(IntegerType::U16),
+            Instruction::Sub(IntegerType::U16),
+            Instruction::Mul(IntegerType::U16),
+            Instruction::Div(IntegerType::U16),
+            Instruction::Sar(IntegerType::U16),
+            Instruction::Sal(IntegerType::U16),
+            Instruction::Neg(IntegerType::U16),
+            Instruction::Shr(IntegerType::U16),
+            Instruction::Shl(IntegerType::U16),
+            Instruction::And(IntegerType::U16),
+            Instruction::Or(IntegerType::U16),
+            Instruction::Xor(IntegerType::U16),
+            Instruction::Not(IntegerType::U16),
+            Instruction::Cmp(IntegerType::U16),
+            Instruction::Inc(IntegerType::U16),
+            Instruction::Dec(IntegerType::U16),
+            Instruction::U8Promote,
+            Instruction::U16Demote,
+            Instruction::I8Promote,
+            Instruction::I16Demote,
+            Instruction::PushConstU8(1),
+            Instruction::PushConstU16(1),
+            Instruction::PushConstI8(1),
+            Instruction::PushConstI16(1),
+            Instruction::LoadReg(Register::BasePtr),
+            Instruction::Load(IntegerType::U16, 0xABCD),
+            Instruction::Store(IntegerType::U16, 0xABCD),
+            Instruction::Dup(IntegerType::U16),
+            Instruction::Drop(IntegerType::U16),
+            Instruction::Int(12),
+            Instruction::Ret,
+            Instruction::Jmp(-31),
+            Instruction::Jnz(31),
+            Instruction::Jz(-31),
+            Instruction::Jn(31),
+            Instruction::Jp(-31),
+            Instruction::Call(0xABCD),
+        ];
+
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+        program.instructions = instr;
 
         let mut vm = VM::default();
         vm.exec(program, &mut shell).unwrap();
