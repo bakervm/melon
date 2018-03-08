@@ -46,6 +46,7 @@ pub struct VM {
     pub mem: Vec<SmallUInt>,
     /// The return value of the VM
     pub return_value: SmallUInt,
+    cmp_res: Int,
     halted: bool,
 }
 
@@ -119,6 +120,10 @@ impl VM {
     ) -> Result<()> {
         match instruction {
             Instruction::Int(signal) => shell.int(self, signal)?,
+            Instruction::PushConstU8(value) => self.push_const_u8(value),
+            Instruction::PushConstU16(value) => self.push_const_u16(value),
+            Instruction::PushConstI8(value) => self.push_const_i8(value),
+            Instruction::PushConstI16(value) => self.push_const_i16(value),
             _ => bail!("instruction {:?} is not yet implemented", instruction),
         }
 
@@ -137,17 +142,17 @@ impl VM {
     }
 
     /// Returns the small uint at the given address
-    fn read_small_uint(&mut self, addr: Address) -> SmallUInt {
+    fn read_u8(&mut self, addr: Address) -> SmallUInt {
         self.mem[addr as usize]
     }
 
     /// Writes the given small uint to the given address
-    fn write_small_uint(&mut self, addr: Address, value: SmallUInt) {
+    fn write_u8(&mut self, addr: Address, value: SmallUInt) {
         self.mem[addr as usize] = value;
     }
 
     /// Returns the uint at the given address
-    fn read_uint(&mut self, addr: Address) -> UInt {
+    fn read_u16(&mut self, addr: Address) -> UInt {
         let inner_addr_start = addr as usize;
 
         let value = <Endianess as ByteOrder>::read_u16(&mut self.mem[inner_addr_start..]);
@@ -156,28 +161,234 @@ impl VM {
     }
 
     /// Writes the given uint to the given address
-    fn write_uint(&mut self, addr: Address, value: UInt) {
+    fn write_u16(&mut self, addr: Address, value: UInt) {
         let inner_addr_start = addr as usize;
 
         <Endianess as ByteOrder>::write_u16(&mut self.mem[inner_addr_start..], value);
+    }
+
+    /// Helper method for popping a SmallUInt value off the stack
+    fn pop_u8(&mut self) -> SmallUInt {
+        let addr = self.sp;
+
+        let value = self.read_u8(addr);
+
+        self.sp += 1;
+
+        value
+    }
+
+    /// Helper method for popping a UInt value off the stack
+    fn pop_u16(&mut self) -> UInt {
+        let addr = self.sp;
+
+        let value = self.read_u16(addr);
+
+        self.sp += 2;
+
+        value
+    }
+
+    /// Helper method for popping a SmallInt value off the stack
+    fn pop_i8(&mut self) -> SmallInt {
+        let addr = self.sp;
+
+        let value = self.read_u8(addr);
+
+        self.sp += 1;
+
+        value as SmallInt
+    }
+
+    /// Helper method for popping a Int value off the stack
+    fn pop_i16(&mut self) -> Int {
+        let addr = self.sp;
+
+        let value = self.read_u16(addr);
+
+        self.sp += 2;
+
+        value as Int
+    }
+
+    // ####################
+    // INSTRUCTION HANDLERS
+    // ####################
+
+    /// Handler for `Instruction::PushConstU8(SmallUInt)`
+    fn push_const_u8(&mut self, value: SmallUInt) {
+        self.sp -= 1;
+
+        let addr = self.sp;
+
+        self.write_u8(addr, value);
+    }
+
+    /// Handler for `Instruction::PushConstU16(UInt)`
+    fn push_const_u16(&mut self, value: UInt) {
+        self.sp -= 2;
+
+        let addr = self.sp;
+
+        self.write_u16(addr, value);
+    }
+
+    /// Handler for `Instruction::PushConstI8(SmallInt)`
+    fn push_const_i8(&mut self, value: SmallInt) {
+        self.sp -= 1;
+
+        let addr = self.sp;
+
+        self.write_u8(addr, value as SmallUInt);
+    }
+
+    /// Handler for `Instruction::PushConstI16(Int)`
+    fn push_const_i16(&mut self, value: Int) {
+        self.sp -= 2;
+
+        let addr = self.sp;
+
+        self.write_u16(addr, value as UInt);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{self, Rng};
+
+    mod helper {
+        use program::Program;
+        use instruction::Instruction;
+        use shell::Shell;
+
+        #[derive(Default)]
+        pub struct BogusShell {
+            data: [u8; 8],
+        }
+
+        impl Shell for BogusShell {
+            const ID: &'static str = "__BOGUS_SHELL__";
+        }
+
+        pub fn generate_shell() -> BogusShell {
+            Default::default()
+        }
+
+        pub fn generate_program() -> Program {
+            Program {
+                core_version: env!("CARGO_PKG_VERSION").to_owned(),
+                shell_id: "__BOGUS_SHELL__".to_owned(),
+                instructions: generate_instructions(),
+                mem_size: None,
+            }
+        }
+
+        pub fn generate_instructions() -> Vec<Instruction> {
+            vec![
+                Instruction::PushConstU8(0xFF),
+                Instruction::PushConstU16(0xFFFF),
+                Instruction::PushConstI8(-120),
+                Instruction::PushConstI16(-32000),
+            ]
+        }
+    }
 
     #[test]
     fn byteorder_check() {
-        let mut test_data = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let mut rng = rand::thread_rng();
 
-        let addr = 3;
-        let value: u16 = 0x2233;
+        for _ in 0..3000 {
+            let mut max = rng.gen_range(10, 300);
 
-        let inner_addr_start = addr as usize;
+            let mut test_data: Vec<u8> = (0..max).map(|_| rng.gen()).collect();
 
-        <Endianess as ByteOrder>::write_u16(&mut test_data[inner_addr_start..], value);
+            let addr_front_byte: u16 = rng.gen_range(0, max - 2);
+            let addr_back_byte: u16 = addr_front_byte + 1;
 
-        assert_eq!(test_data, vec![0, 1, 2, 0x22, 0x33, 5, 6, 7, 8, 9]);
+            let value: u16 = rng.gen();
+
+            let front_byte: u8 = ((value >> 8) & 0xFF) as u8;
+            let back_byte: u8 = (value & 0xFF) as u8;
+
+            let inner_addr_start = addr_front_byte as usize;
+
+            <Endianess as ByteOrder>::write_u16(&mut test_data[inner_addr_start..], value);
+
+            let mut asserted_vec = test_data.clone();
+            asserted_vec[addr_front_byte as usize] = front_byte;
+            asserted_vec[addr_back_byte as usize] = back_byte;
+
+            assert_eq!(test_data, asserted_vec);
+        }
+    }
+
+    #[test]
+    fn stack_u8() {
+        let mut vm = VM::default();
+        vm.reset(&helper::generate_program()).unwrap();
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..3000 {
+            let test_value = rng.gen();
+
+            vm.push_const_u8(test_value);
+            assert_eq!(vm.pop_u8(), test_value);
+        }
+    }
+
+    #[test]
+    fn stack_i8() {
+        let mut vm = VM::default();
+        vm.reset(&helper::generate_program()).unwrap();
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..3000 {
+            let test_value = rng.gen();
+
+            vm.push_const_i8(test_value);
+            assert_eq!(vm.pop_i8(), test_value);
+        }
+    }
+
+    #[test]
+    fn stack_u16() {
+        let mut vm = VM::default();
+        vm.reset(&helper::generate_program()).unwrap();
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..3000 {
+            let test_value = rng.gen();
+
+            vm.push_const_u16(test_value);
+            assert_eq!(vm.pop_u16(), test_value);
+        }
+    }
+
+    #[test]
+    fn stack_i16() {
+        let mut vm = VM::default();
+        vm.reset(&helper::generate_program()).unwrap();
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..3000 {
+            let test_value = rng.gen();
+
+            vm.push_const_i16(test_value);
+            assert_eq!(vm.pop_i16(), test_value);
+        }
+    }
+
+    #[test]
+    fn bogus_execution() {
+        let mut shell = helper::generate_shell();
+        let program = helper::generate_program();
+
+        let mut vm = VM::default();
+        vm.exec(program, &mut shell).unwrap();
     }
 }

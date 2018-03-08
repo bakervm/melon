@@ -22,24 +22,35 @@ use typedef::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Instruction {
-    U8(IntegerInstruction),
-    U16(IntegerInstruction),
+    Add(IntegerType),
+    Sub(IntegerType),
+    Mul(IntegerType),
+    Div(IntegerType),
+    Sar(IntegerType),
+    Sal(IntegerType),
+    Neg(IntegerType),
+    Shr(IntegerType),
+    Shl(IntegerType),
+    And(IntegerType),
+    Or(IntegerType),
+    Xor(IntegerType),
+    Not(IntegerType),
+    Cmp(IntegerType),
+    Inc(IntegerType),
+    Dec(IntegerType),
 
-    I8(IntegerInstruction),
-    I16(IntegerInstruction),
+    U8Promote,
+    U16Demote,
+    I8Promote,
+    I16Demote,
 
     PushConstU8(SmallUInt),
     PushConstU16(UInt),
     PushConstI8(SmallInt),
     PushConstI16(Int),
 
-    PushU8FromAddr(Address),
-    PushU16FromAddr(Address),
-    PushI8FromAddr(Address),
-    PushI16FromAddr(Address),
-
-    // These are always u16
-    PushFromReg(Register),
+    /// Loads a u16 from the given register and pushes it onto the stack
+    LoadReg(Register),
 
     LoadU8(Address),
     LoadU16(Address),
@@ -51,6 +62,9 @@ pub enum Instruction {
     StoreI8(Address),
     StoreI16(Address),
 
+    Dup(IntegerType),
+    Drop(IntegerType),
+
     Int(UInt),
 
     Call(Address),
@@ -61,25 +75,6 @@ pub enum Instruction {
     Jz(Int),
     Jn(Int),
     Jp(Int),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum IntegerInstruction {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Sar,
-    Sal,
-    Neg,
-    Shr,
-    Shl,
-    And,
-    Or,
-    Xor,
-    Not,
-    Cmp,
-    ConvertTo(IntegerType),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

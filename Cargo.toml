@@ -6,7 +6,8 @@ description = "A library for creating retro computing platforms"
 license = "GPL-3.0"
 
 [dependencies]
+byteorder = "1"
+failure = "^0.1"
 serde = "1"
 serde_derive = "1"
-failure = "^0.1"
-byteorder = "1"
+rand = "0.4.2"

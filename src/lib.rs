@@ -28,6 +28,7 @@
 extern crate byteorder;
 #[macro_use]
 extern crate failure;
+extern crate rand;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
