@@ -94,6 +94,7 @@ impl VM {
 
         self.mem = vec![0; mem_size as usize];
         self.sp = (mem_size - 1) as Address;
+        self.program = program.instructions.clone();
 
         Ok(())
     }
