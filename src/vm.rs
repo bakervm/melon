@@ -283,7 +283,7 @@ impl VM {
     // ####################
 
     /// Handler for `Instruction::PushConstU8(SmallUInt)`
-    fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
+    pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
         self.sp -= 1;
 
         let addr = self.sp;
@@ -292,7 +292,7 @@ impl VM {
     }
 
     /// Handler for `Instruction::PushConstU16(UInt)`
-    fn push_const_u16(&mut self, value: UInt) -> Result<()> {
+    pub fn push_const_u16(&mut self, value: UInt) -> Result<()> {
         self.sp -= 2;
 
         let addr = self.sp;
@@ -301,7 +301,7 @@ impl VM {
     }
 
     /// Handler for `Instruction::PushConstI8(SmallInt)`
-    fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
+    pub fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
         self.sp -= 1;
 
         let addr = self.sp;
@@ -310,7 +310,7 @@ impl VM {
     }
 
     /// Handler for `Instruction::PushConstI16(Int)`
-    fn push_const_i16(&mut self, value: Int) -> Result<()> {
+    pub fn push_const_i16(&mut self, value: Int) -> Result<()> {
         self.sp -= 2;
 
         let addr = self.sp;
@@ -319,7 +319,7 @@ impl VM {
     }
 
     /// Handler for `Instruction::LoadReg(Register)`
-    fn load_reg(&mut self, reg: Register) -> Result<()> {
+    pub fn load_reg(&mut self, reg: Register) -> Result<()> {
         let ptr = match reg {
             Register::StackPtr => self.sp,
             Register::BasePtr => self.bp,
@@ -329,7 +329,7 @@ impl VM {
     }
 
     /// Handler for `Instruction::Load(IntegerType, Address)`
-    fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
+    pub fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.read_u8(addr)?;
@@ -345,7 +345,7 @@ impl VM {
     }
 
     /// Handler for `Instruction::Store(IntegerType, Address)`
-    fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
+    pub fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.pop_u8()?;
@@ -362,7 +362,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, adds them together and pushes the result
     /// back on the stack
-    fn add(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn add(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
