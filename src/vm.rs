@@ -109,7 +109,7 @@ impl VM {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
             Ok(current_instruction.clone())
         } else {
-            bail!("could no find instruction at {:04X}", self.pc);
+            bail!("could no find instruction at ${:04X}", self.pc);
         }
     }
 
@@ -583,8 +583,7 @@ mod tests {
         vm.exec(&program, &mut shell).unwrap();
     }
 
-    #[test]
-    #[should_panic] // TODO: This should be removed in the future
+    #[test] // TODO: This should be removed in the future
     fn all_instructions() {
         let instr = vec![
             Instruction::Sub(IntegerType::U16),
@@ -630,7 +629,11 @@ mod tests {
         program.instructions = instr;
 
         let mut vm = VM::default();
-        vm.exec(&program, &mut shell).unwrap();
+        let err = vm.exec(&program, &mut shell).err().expect("error expected");
+        let formatted_err = format!("{}", err);
+
+        assert!(formatted_err.starts_with("instruction"));
+        assert!(formatted_err.ends_with("not yet implemented"));
     }
 
     #[test]
