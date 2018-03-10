@@ -52,7 +52,7 @@ pub struct VM {
 
 impl VM {
     /// Executes the given program using the given shell and returns the program's exit status
-    pub fn exec<T: Shell>(&mut self, program: Program, shell: &mut T) -> Result<SmallUInt> {
+    pub fn exec<T: Shell>(&mut self, program: &Program, shell: &mut T) -> Result<SmallUInt> {
         ensure!(program.shell_id == T::ID, "wrong shell ID");
 
         ensure!(
@@ -183,7 +183,7 @@ impl VM {
 
         let inner_addr_start = addr as usize;
 
-        let value = <Endianess as ByteOrder>::read_u16(&mut self.mem[inner_addr_start..]);
+        let value = <Endianess as ByteOrder>::read_u16(&self.mem[inner_addr_start..]);
 
         Ok(value)
     }
@@ -384,7 +384,7 @@ mod tests {
     fn byteorder_check() {
         let mut rng = rand::thread_rng();
 
-        for _ in 0..3000 {
+        for _ in 0..300 {
             let mut max = rng.gen_range(10, 300);
 
             let mut test_data: Vec<u8> = (0..max).map(|_| rng.gen()).collect();
@@ -416,7 +416,7 @@ mod tests {
 
         let mut rng = rand::thread_rng();
 
-        for _ in 0..3000 {
+        for _ in 0..300 {
             let test_value = rng.gen();
 
             vm.push_const_u8(test_value);
@@ -431,7 +431,7 @@ mod tests {
 
         let mut rng = rand::thread_rng();
 
-        for _ in 0..3000 {
+        for _ in 0..300 {
             let test_value = rng.gen();
 
             vm.push_const_i8(test_value);
@@ -446,7 +446,7 @@ mod tests {
 
         let mut rng = rand::thread_rng();
 
-        for _ in 0..3000 {
+        for _ in 0..300 {
             let test_value = rng.gen();
 
             vm.push_const_u16(test_value);
@@ -461,7 +461,7 @@ mod tests {
 
         let mut rng = rand::thread_rng();
 
-        for _ in 0..3000 {
+        for _ in 0..300 {
             let test_value = rng.gen();
 
             vm.push_const_i16(test_value);
@@ -475,7 +475,7 @@ mod tests {
         let program = helper::generate_program();
 
         let mut vm = VM::default();
-        vm.exec(program, &mut shell).unwrap();
+        vm.exec(&program, &mut shell).unwrap();
     }
 
     #[test]
@@ -495,18 +495,18 @@ mod tests {
         let mut vm = VM::default();
         vm.pc = (program.instructions.len() + 20) as Address;
 
-        vm.exec(program, &mut shell).unwrap();
+        vm.exec(&program, &mut shell).unwrap();
     }
 
     #[test]
     fn int_exec() {
-        for i in 0..3000 {
+        for i in 0..300 {
             let mut shell = helper::generate_shell();
             let mut program = helper::generate_program();
             program.instructions = vec![Instruction::Int(i)];
 
             let mut vm = VM::default();
-            vm.exec(program, &mut shell).unwrap();
+            vm.exec(&program, &mut shell).unwrap();
         }
     }
 
@@ -518,7 +518,7 @@ mod tests {
         program.mem_size = Some(1);
 
         let mut vm = VM::default();
-        vm.exec(program, &mut shell).unwrap();
+        vm.exec(&program, &mut shell).unwrap();
     }
 
     #[test]
@@ -569,6 +569,6 @@ mod tests {
         program.instructions = instr;
 
         let mut vm = VM::default();
-        vm.exec(program, &mut shell).unwrap();
+        vm.exec(&program, &mut shell).unwrap();
     }
 }
