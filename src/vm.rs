@@ -150,7 +150,7 @@ impl VM {
     }
 
     /// Stops execution and shuts down the VM
-    fn halt(&mut self) {
+    pub fn halt(&mut self) {
         self.halted = true;
     }
 
@@ -165,14 +165,14 @@ impl VM {
     }
 
     /// Returns the small uint at the given address
-    fn read_u8(&mut self, addr: Address) -> Result<SmallUInt> {
+    pub fn read_u8(&mut self, addr: Address) -> Result<SmallUInt> {
         self.ensure_valid_mem_addr(addr)?;
 
         Ok(self.mem[addr as usize])
     }
 
     /// Writes the given small uint to the given address
-    fn write_u8(&mut self, addr: Address, value: SmallUInt) -> Result<()> {
+    pub fn write_u8(&mut self, addr: Address, value: SmallUInt) -> Result<()> {
         self.ensure_valid_mem_addr(addr)?;
 
         self.mem[addr as usize] = value;
@@ -181,7 +181,7 @@ impl VM {
     }
 
     /// Returns the uint at the given address
-    fn read_u16(&mut self, addr: Address) -> Result<UInt> {
+    pub fn read_u16(&mut self, addr: Address) -> Result<UInt> {
         self.ensure_valid_mem_addr(addr + 1)?;
 
         let inner_addr_start = addr as usize;
@@ -192,7 +192,7 @@ impl VM {
     }
 
     /// Writes the given uint to the given address
-    fn write_u16(&mut self, addr: Address, value: UInt) -> Result<()> {
+    pub fn write_u16(&mut self, addr: Address, value: UInt) -> Result<()> {
         self.ensure_valid_mem_addr(addr + 1)?;
 
         let inner_addr_start = addr as usize;
@@ -203,7 +203,7 @@ impl VM {
     }
 
     /// Helper method for popping a SmallUInt value off the stack
-    fn pop_u8(&mut self) -> Result<SmallUInt> {
+    pub fn pop_u8(&mut self) -> Result<SmallUInt> {
         let addr = self.sp;
 
         let value = self.read_u8(addr)?;
@@ -214,7 +214,7 @@ impl VM {
     }
 
     /// Helper method for popping a UInt value off the stack
-    fn pop_u16(&mut self) -> Result<UInt> {
+    pub fn pop_u16(&mut self) -> Result<UInt> {
         let addr = self.sp;
 
         let value = self.read_u16(addr)?;
@@ -225,7 +225,7 @@ impl VM {
     }
 
     /// Helper method for popping a SmallInt value off the stack
-    fn pop_i8(&mut self) -> Result<SmallInt> {
+    pub fn pop_i8(&mut self) -> Result<SmallInt> {
         let addr = self.sp;
 
         let value = self.read_u8(addr)?;
@@ -236,7 +236,7 @@ impl VM {
     }
 
     /// Helper method for popping a Int value off the stack
-    fn pop_i16(&mut self) -> Result<Int> {
+    pub fn pop_i16(&mut self) -> Result<Int> {
         let addr = self.sp;
 
         let value = self.read_u16(addr)?;
@@ -247,7 +247,7 @@ impl VM {
     }
 
     /// Returns two u8 values as (left-hand-side, right-hand-side)
-    fn pop_u8_lr(&mut self) -> Result<(SmallUInt, SmallUInt)> {
+    pub fn pop_u8_lr(&mut self) -> Result<(SmallUInt, SmallUInt)> {
         let a = self.pop_u8()?;
         let b = self.pop_u8()?;
 
@@ -255,7 +255,7 @@ impl VM {
     }
 
     /// Returns two u16 values as (left-hand-side, right-hand-side)
-    fn pop_u16_lr(&mut self) -> Result<(UInt, UInt)> {
+    pub fn pop_u16_lr(&mut self) -> Result<(UInt, UInt)> {
         let a = self.pop_u16()?;
         let b = self.pop_u16()?;
 
@@ -263,7 +263,7 @@ impl VM {
     }
 
     /// Returns two i8 values as (left-hand-side, right-hand-side)
-    fn pop_i8_lr(&mut self) -> Result<(SmallInt, SmallInt)> {
+    pub fn pop_i8_lr(&mut self) -> Result<(SmallInt, SmallInt)> {
         let a = self.pop_i8()?;
         let b = self.pop_i8()?;
 
@@ -271,7 +271,7 @@ impl VM {
     }
 
     /// Returns two i16 values as (left-hand-side, right-hand-side)
-    fn pop_i16_lr(&mut self) -> Result<(Int, Int)> {
+    pub fn pop_i16_lr(&mut self) -> Result<(Int, Int)> {
         let a = self.pop_i16()?;
         let b = self.pop_i16()?;
 
