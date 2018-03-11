@@ -158,6 +158,11 @@ impl VM {
             Instruction::Sub(ty) => self.sub(ty)?,
             Instruction::Mul(ty) => self.mul(ty)?,
             Instruction::Div(ty) => self.div(ty)?,
+            Instruction::Shr(ty) => self.shr(ty)?,
+            Instruction::Shl(ty) => self.shl(ty)?,
+            Instruction::And(ty) => self.and(ty)?,
+            Instruction::Or(ty) => self.or(ty)?,
+            Instruction::Xor(ty) => self.xor(ty)?,
 
             Instruction::PushConstU8(value) => self.push_const_u8(value)?,
             Instruction::PushConstU16(value) => self.push_const_u16(value)?,
@@ -809,5 +814,45 @@ mod tests {
             (1500, 500, 3),
             (13, -4, -3),
             (1000, -50, -20)
+    }
+
+    impl_instr_test!{
+        shr_instruction (Shr)
+            (8, 3, 1),
+            (16, 1, 8),
+            (32, 2, 8),
+            (128, 4, 8)
+    }
+
+    impl_instr_test!{
+        shl_instruction (Shl)
+            (1, 4, 16),
+            (1, 8, 256),
+            (1, 3, 8),
+            (1, 2, 4)
+    }
+
+    impl_instr_test!{
+        and_instruction (And)
+            (0b01010101, 0xFF, 0b01010101),
+            (0b1010101010101010, 0xFFFF, 0b1010101010101010),
+            (0b0101, 0x0F, 0b0101),
+            (0b01010101, 0xFF, 0b01010101)
+    }
+
+    impl_instr_test!{
+        or_instruction (Or)
+            (0xFF, 0x00, 0xFF),
+            (0xFF00, 0x00FF, 0xFFFF),
+            (0x0F, 0x00, 0x0F),
+            (0x00FF, 0x0000, 0x00FF)
+    }
+
+    impl_instr_test!{
+        xor_instruction (Xor)
+            (0xFF, 0x00, 0xFF),
+            (0xFF00, 0x00FF, 0xFFFF),
+            (0x0F, 0x00, 0x0F),
+            (0x00FF, 0x00FF, 0x0000)
     }
 }
