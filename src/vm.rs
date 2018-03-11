@@ -394,28 +394,58 @@ impl VM {
         Ok(())
     }
 
-    impl_instr! {
-        /// Pops two values of the given type off the stack, adds them together and pushes the result
+    impl_instr!{
+        /// Pops two values of the given type off the stack, *adds* them together and pushes the result
         /// back on the stack
         add, +
     }
 
-    impl_instr! {
-        /// Pops two values of the given type off the stack, subtracts the second from the first and
+    impl_instr!{
+        /// Pops two values of the given type off the stack, *subtracts* the second from the first and
         /// pushes the result back on the stack
         sub, -
     }
 
     impl_instr!{
-        /// Pops two values of the given type off the stack, multiplies them and pushes the result
+        /// Pops two values of the given type off the stack, *multiplies* them and pushes the result
         /// back on the stack
         mul, *
     }
 
     impl_instr!{
-        /// Pops two values of the given type off the stack, divides the first through the second and
+        /// Pops two values of the given type off the stack, *divides* the first through the second and
         /// pushes the result back on the stack
         div, /
+    }
+
+    impl_instr!{
+        /// Pops two values of the given type off the stack, uses the second one to shift the bits
+        /// of the first one to the *right* and pushes the result back onto the stack
+        shr, >>
+    }
+
+    impl_instr!{
+        /// Pops two values of the given type off the stack, uses the second one to shift the bits
+        /// of the first one to the *left* and pushes the result back onto the stack
+        shl, <<
+    }
+
+    impl_instr!{
+        /// Pops two values of the given type off the stack, applies a *bitwise and* to both and
+        /// pushes the result back onto the stack
+        and, &
+    }
+
+    impl_instr!{
+        /// Pops two values of the given type off the stack, applies a *bitwise or* to both and
+        /// pushes the result back onto the stack
+        or, |
+    }
+
+    impl_instr!{
+        /// Pops two values of the given type off the stack, applies a *bitwise or* to both and
+        /// pushes the result back onto the stack
+        xor, ^
     }
 }
 
@@ -424,6 +454,63 @@ mod tests {
     use super::*;
     use rand::{self, Rng};
     use instruction::{Instruction, IntegerType, Register};
+
+    /// A helper macro for generating tests for simple instructions
+    macro_rules! impl_instr_test {
+        ($test_name:ident ($instr:ident)
+            ($u8_a:expr, $u8_b:expr, $u8_res:expr),
+            ($u16_a:expr, $u16_b:expr, $u16_res:expr),
+            ($i8_a:expr, $i8_b:expr, $i8_res:expr),
+            ($i16_a:expr, $i16_b:expr, $i16_res:expr)
+        ) => (
+            #[test]
+            fn $test_name() {
+                let mut vm = VM::default();
+                let mut shell = helper::generate_shell();
+                let mut program = helper::generate_program();
+
+                program.instructions = vec![
+                    Instruction::PushConstU8($u8_a),
+                    Instruction::PushConstU8($u8_b),
+                    Instruction::$instr(IntegerType::U8),
+                ];
+
+                vm.exec(&program, &mut shell).unwrap();
+
+                assert_eq!(vm.pop_u8().unwrap(), $u8_res);
+
+                program.instructions = vec![
+                    Instruction::PushConstU16($u16_a),
+                    Instruction::PushConstU16($u16_b),
+                    Instruction::$instr(IntegerType::U16),
+                ];
+
+                vm.exec(&program, &mut shell).unwrap();
+
+                assert_eq!(vm.pop_u16().unwrap(), $u16_res);
+
+                program.instructions = vec![
+                    Instruction::PushConstI8($i8_a),
+                    Instruction::PushConstI8($i8_b),
+                    Instruction::$instr(IntegerType::I8),
+                ];
+
+                vm.exec(&program, &mut shell).unwrap();
+
+                assert_eq!(vm.pop_i8().unwrap(), $i8_res);
+
+                program.instructions = vec![
+                    Instruction::PushConstI16($i16_a),
+                    Instruction::PushConstI16($i16_b),
+                    Instruction::$instr(IntegerType::I16),
+                ];
+
+                vm.exec(&program, &mut shell).unwrap();
+
+                assert_eq!(vm.pop_i16().unwrap(), $i16_res);
+            }
+        );
+    }
 
     mod helper {
         use program::Program;
@@ -617,8 +704,6 @@ mod tests {
     #[test] // TODO: This should be removed in the future
     fn all_instructions() {
         let instr = vec![
-            Instruction::Sar(IntegerType::U16),
-            Instruction::Sal(IntegerType::U16),
             Instruction::Neg(IntegerType::U16),
             Instruction::Shr(IntegerType::U16),
             Instruction::Shl(IntegerType::U16),
@@ -694,191 +779,35 @@ mod tests {
         assert_eq!(vm.pop_u8().unwrap(), 1);
     }
 
-    #[test]
-    fn add_instruction() {
-        let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
-        let mut program = helper::generate_program();
-
-        program.instructions = vec![
-            Instruction::PushConstU8(100),
-            Instruction::PushConstU8(50),
-            Instruction::Add(IntegerType::U8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u8().unwrap(), 150);
-
-        program.instructions = vec![
-            Instruction::PushConstU16(2500),
-            Instruction::PushConstU16(1000),
-            Instruction::Add(IntegerType::U16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u16().unwrap(), 3500);
-
-        program.instructions = vec![
-            Instruction::PushConstI8(50),
-            Instruction::PushConstI8(-100),
-            Instruction::Add(IntegerType::I8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i8().unwrap(), -50);
-
-        program.instructions = vec![
-            Instruction::PushConstI16(50),
-            Instruction::PushConstI16(-1000),
-            Instruction::Add(IntegerType::I16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i16().unwrap(), -950);
+    impl_instr_test!{
+        add_instruction (Add)
+            (50, 50, 100),
+            (2500, 1000, 3500),
+            (50, -20, 30),
+            (50, 1000, 1050)
     }
 
-    #[test]
-    fn sub_instruction() {
-        let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
-        let mut program = helper::generate_program();
-
-        program.instructions = vec![
-            Instruction::PushConstU8(100),
-            Instruction::PushConstU8(50),
-            Instruction::Sub(IntegerType::U8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u8().unwrap(), 50);
-
-        program.instructions = vec![
-            Instruction::PushConstU16(2500),
-            Instruction::PushConstU16(1000),
-            Instruction::Sub(IntegerType::U16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u16().unwrap(), 1500);
-
-        program.instructions = vec![
-            Instruction::PushConstI8(50),
-            Instruction::PushConstI8(100),
-            Instruction::Sub(IntegerType::I8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i8().unwrap(), -50);
-
-        program.instructions = vec![
-            Instruction::PushConstI16(50),
-            Instruction::PushConstI16(100),
-            Instruction::Sub(IntegerType::I16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i16().unwrap(), -50);
+    impl_instr_test!{
+        sub_instruction (Sub)
+            (100, 50, 50),
+            (2500, 1000, 1500),
+            (50, 100, -50),
+            (50, 1000, -950)
     }
 
-    #[test]
-    fn mul_instruction() {
-        let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
-        let mut program = helper::generate_program();
-
-        program.instructions = vec![
-            Instruction::PushConstU8(8),
-            Instruction::PushConstU8(8),
-            Instruction::Mul(IntegerType::U8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u8().unwrap(), 64);
-
-        program.instructions = vec![
-            Instruction::PushConstU16(150),
-            Instruction::PushConstU16(150),
-            Instruction::Mul(IntegerType::U16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u16().unwrap(), 22500);
-
-        program.instructions = vec![
-            Instruction::PushConstI8(13),
-            Instruction::PushConstI8(-4),
-            Instruction::Mul(IntegerType::I8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i8().unwrap(), -52);
-
-        program.instructions = vec![
-            Instruction::PushConstI16(-50),
-            Instruction::PushConstI16(100),
-            Instruction::Mul(IntegerType::I16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i16().unwrap(), -5000);
+    impl_instr_test!{
+        mul_instruction (Mul)
+            (8, 8, 64),
+            (150, 150, 22500),
+            (13, -4, -52),
+            (-50, 100, -5000)
     }
 
-    #[test]
-    fn div_instruction() {
-        let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
-        let mut program = helper::generate_program();
-
-        program.instructions = vec![
-            Instruction::PushConstU8(8),
-            Instruction::PushConstU8(4),
-            Instruction::Div(IntegerType::U8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u8().unwrap(), 2);
-
-        program.instructions = vec![
-            Instruction::PushConstU16(1500),
-            Instruction::PushConstU16(500),
-            Instruction::Div(IntegerType::U16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_u16().unwrap(), 3);
-
-        program.instructions = vec![
-            Instruction::PushConstI8(13),
-            Instruction::PushConstI8(-4),
-            Instruction::Div(IntegerType::I8),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i8().unwrap(), -3);
-
-        program.instructions = vec![
-            Instruction::PushConstI16(1000),
-            Instruction::PushConstI16(-50),
-            Instruction::Div(IntegerType::I16),
-        ];
-
-        vm.exec(&program, &mut shell).unwrap();
-
-        assert_eq!(vm.pop_i16().unwrap(), -20);
+    impl_instr_test!{
+        div_instruction (Div)
+            (8, 4, 2),
+            (1500, 500, 3),
+            (13, -4, -3),
+            (1000, -50, -20)
     }
 }
