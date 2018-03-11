@@ -50,7 +50,7 @@ macro_rules! impl_instr {
                 }
             }
         }
-    );
+    )
 }
 
 type Endianess = BigEndian;
@@ -514,7 +514,7 @@ mod tests {
 
                 assert_eq!(vm.pop_i16().unwrap(), $i16_res);
             }
-        );
+        )
     }
 
     mod helper {
