@@ -22,14 +22,45 @@ use program::Program;
 use shell::Shell;
 use byteorder::{BigEndian, ByteOrder};
 
+/// Helper macro for implementing simple instruction methods
+macro_rules! impl_instr {
+    ($(#[$attr:meta])* $instr:ident, $operator:tt) => (
+        $(#[$attr])*
+        pub fn $instr(&mut self, ty: IntegerType) -> Result<()> {
+            match ty {
+                IntegerType::U8 => {
+                    let (a, b) = self.pop_u8_lr()?;
+
+                    self.push_const_u8(a $operator b)
+                }
+                IntegerType::U16 => {
+                    let (a, b) = self.pop_u16_lr()?;
+
+                    self.push_const_u16(a $operator b)
+                }
+                IntegerType::I8 => {
+                    let (a, b) = self.pop_i8_lr()?;
+
+                    self.push_const_i8(a $operator b)
+                }
+                IntegerType::I16 => {
+                    let (a, b) = self.pop_i16_lr()?;
+
+                    self.push_const_i16(a $operator b)
+                }
+            }
+        }
+    );
+}
+
 type Endianess = BigEndian;
 
 /// A constant used to calulate the actually used memory of the VM
-pub const KILOBYTE: Address = 1024;
+pub const MEM_PAGE: Address = 1024;
 /// A constant defining the default memory size of the VM
-const DEFAULT_MEM_SIZE_KILOBYTE: Address = 32;
+const DEFAULT_MEM_PAGE_COUNT: Address = 32;
 /// A constant defining the maximum memory size of the VM
-const MAX_MEM_SIZE_KILOBYTE: Address = 64;
+const MAX_MEM_PAGE_COUNT: Address = 64;
 
 /// The state of the VM
 #[derive(Serialize, Deserialize, Default)]
@@ -61,7 +92,7 @@ impl VM {
         );
 
         if let Some(mem_size) = program.mem_size {
-            ensure!(mem_size < MAX_MEM_SIZE_KILOBYTE, "requested memory too big");
+            ensure!(mem_size <= MAX_MEM_PAGE_COUNT, "requested memory too big");
 
             ensure!(mem_size > 0, "requested memory too small");
         }
@@ -85,7 +116,7 @@ impl VM {
     fn reset(&mut self, program: &Program) -> Result<()> {
         *self = Default::default();
 
-        let mem_size = program.mem_size.unwrap_or(DEFAULT_MEM_SIZE_KILOBYTE) * KILOBYTE;
+        let mem_size = program.mem_size.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
 
         ensure!(
             self.program.len() < mem_size as usize,
@@ -363,112 +394,28 @@ impl VM {
         Ok(())
     }
 
-    /// Pops two values of the given type off the stack, adds them together and pushes the result
-    /// back on the stack
-    pub fn add(&mut self, ty: IntegerType) -> Result<()> {
-        match ty {
-            IntegerType::U8 => {
-                let (a, b) = self.pop_u8_lr()?;
-
-                self.push_const_u8(a + b)
-            }
-            IntegerType::U16 => {
-                let (a, b) = self.pop_u16_lr()?;
-
-                self.push_const_u16(a + b)
-            }
-            IntegerType::I8 => {
-                let (a, b) = self.pop_i8_lr()?;
-
-                self.push_const_i8(a + b)
-            }
-            IntegerType::I16 => {
-                let (a, b) = self.pop_i16_lr()?;
-
-                self.push_const_i16(a + b)
-            }
-        }
+    impl_instr! {
+        /// Pops two values of the given type off the stack, adds them together and pushes the result
+        /// back on the stack
+        add, +
     }
 
-    /// Pops two values of the given type off the stack, subtracts the second from the first and
-    /// pushes the result back on the stack
-    pub fn sub(&mut self, ty: IntegerType) -> Result<()> {
-        match ty {
-            IntegerType::U8 => {
-                let (a, b) = self.pop_u8_lr()?;
-
-                self.push_const_u8(a - b)
-            }
-            IntegerType::U16 => {
-                let (a, b) = self.pop_u16_lr()?;
-
-                self.push_const_u16(a - b)
-            }
-            IntegerType::I8 => {
-                let (a, b) = self.pop_i8_lr()?;
-
-                self.push_const_i8(a - b)
-            }
-            IntegerType::I16 => {
-                let (a, b) = self.pop_i16_lr()?;
-
-                self.push_const_i16(a - b)
-            }
-        }
+    impl_instr! {
+        /// Pops two values of the given type off the stack, subtracts the second from the first and
+        /// pushes the result back on the stack
+        sub, -
     }
 
-    /// Pops two values of the given type off the stack, multiplies them and pushes the result
-    /// back on the stack
-    pub fn mul(&mut self, ty: IntegerType) -> Result<()> {
-        match ty {
-            IntegerType::U8 => {
-                let (a, b) = self.pop_u8_lr()?;
-
-                self.push_const_u8(a * b)
-            }
-            IntegerType::U16 => {
-                let (a, b) = self.pop_u16_lr()?;
-
-                self.push_const_u16(a * b)
-            }
-            IntegerType::I8 => {
-                let (a, b) = self.pop_i8_lr()?;
-
-                self.push_const_i8(a * b)
-            }
-            IntegerType::I16 => {
-                let (a, b) = self.pop_i16_lr()?;
-
-                self.push_const_i16(a * b)
-            }
-        }
+    impl_instr!{
+        /// Pops two values of the given type off the stack, multiplies them and pushes the result
+        /// back on the stack
+        mul, *
     }
 
-    /// Pops two values of the given type off the stack, divides the first through the second and
-    /// pushes the result back on the stack
-    pub fn div(&mut self, ty: IntegerType) -> Result<()> {
-        match ty {
-            IntegerType::U8 => {
-                let (a, b) = self.pop_u8_lr()?;
-
-                self.push_const_u8(a / b)
-            }
-            IntegerType::U16 => {
-                let (a, b) = self.pop_u16_lr()?;
-
-                self.push_const_u16(a / b)
-            }
-            IntegerType::I8 => {
-                let (a, b) = self.pop_i8_lr()?;
-
-                self.push_const_i8(a / b)
-            }
-            IntegerType::I16 => {
-                let (a, b) = self.pop_i16_lr()?;
-
-                self.push_const_i16(a / b)
-            }
-        }
+    impl_instr!{
+        /// Pops two values of the given type off the stack, divides the first through the second and
+        /// pushes the result back on the stack
+        div, /
     }
 }
 
