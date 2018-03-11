@@ -458,7 +458,7 @@ impl VM {
 mod tests {
     use super::*;
     use rand::{self, Rng};
-    use instruction::{Instruction, IntegerType, Register};
+    use instruction::{Instruction, IntegerType};
 
     /// A helper macro for generating tests for simple instructions
     macro_rules! impl_instr_test {
@@ -538,7 +538,7 @@ mod tests {
         pub fn generate_program() -> Program {
             Program {
                 core_version: env!("CARGO_PKG_VERSION").to_owned(),
-                shell_id: "__BOGUS_SHELL__".to_owned(),
+                shell_id: BogusShell::ID.to_owned(),
                 instructions: generate_instructions(),
                 mem_size: Some(63),
             }
