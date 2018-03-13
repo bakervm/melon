@@ -1814,20 +1814,40 @@ mod tests {
 
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jmp(1), Instruction::Jp(1)];
-        vm.cmp_res = 1;
+        program.instructions = vec![
+            Instruction::Jmp(1),
+            Instruction::PushConstU8(2),
+            Instruction::PushConstU8(1),
+            Instruction::Cmp(IntegerType::U8),
+            Instruction::Jp(1),
+        ];
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jmp(1), Instruction::Jn(1)];
-        vm.cmp_res = -1;
+        program.instructions = vec![
+            Instruction::Jmp(1),
+            Instruction::PushConstI8(1),
+            Instruction::PushConstI8(2),
+            Instruction::Cmp(IntegerType::I8),
+            Instruction::Jn(1),
+        ];
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jmp(1), Instruction::Jz(1)];
-        vm.cmp_res = 0;
+        program.instructions = vec![
+            Instruction::Jmp(1),
+            Instruction::PushConstU8(2),
+            Instruction::PushConstU8(2),
+            Instruction::Cmp(IntegerType::U8),
+            Instruction::Jz(1),
+        ];
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jmp(1), Instruction::Jnz(1)];
-        vm.cmp_res = 1234;
+        program.instructions = vec![
+            Instruction::Jmp(1),
+            Instruction::PushConstU8(40),
+            Instruction::PushConstU8(20),
+            Instruction::Cmp(IntegerType::U8),
+            Instruction::Jnz(1),
+        ];
         vm.exec(&program, &mut shell).unwrap();
     }
 
@@ -1868,5 +1888,18 @@ mod tests {
         vm.exec(&program, &mut shell).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), -1234);
+        assert_eq!(vm.pop_i16().unwrap(), -1234);
+
+        program.instructions = vec![
+            Instruction::PushConstI8(-120),
+            Instruction::PushConstU8(0xFF),
+            Instruction::Drop(IntegerType::U8),
+            Instruction::Dup(IntegerType::I8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i8().unwrap(), -120);
+        assert_eq!(vm.pop_i8().unwrap(), -120);
     }
 }
