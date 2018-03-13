@@ -169,8 +169,6 @@ impl VM {
     fn do_cycle<T: Shell>(&mut self, shell: &mut T) -> Result<()> {
         let current_instruction = self.current_instruction()?;
 
-        println!("CURRENT INSTRUCTION!!! {:?}", current_instruction);
-
         self.advance_pc();
 
         self.handle_instruction(current_instruction, shell)?;
@@ -186,7 +184,7 @@ impl VM {
     /// Helper function to ensure the validity of a memory address
     fn ensure_valid_mem_addr(&mut self, addr: Address) -> Result<()> {
         ensure!(
-            addr < (self.mem.len() as Address),
+            addr < ((self.mem.len() - 1) as Address),
             "memory address out of bounds"
         );
 
@@ -1938,6 +1936,17 @@ mod tests {
             Instruction::Store(IntegerType::I16, 0x0000),
             Instruction::Ret,
         ];
+
+        vm.exec(&program, &mut shell).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn pop_empty_stack() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+        program.instructions = vec![Instruction::Drop(IntegerType::U8)];
 
         vm.exec(&program, &mut shell).unwrap();
     }
