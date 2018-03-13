@@ -31,8 +31,8 @@ pub enum Instruction {
     And(IntegerType),
     Or(IntegerType),
     Xor(IntegerType),
-    Neg(IntegerType),
     Not(IntegerType),
+    Neg(IntegerType),
     Cmp(IntegerType),
     Inc(IntegerType),
     Dec(IntegerType),
@@ -47,14 +47,12 @@ pub enum Instruction {
     PushConstI8(SmallInt),
     PushConstI16(Int),
 
-    /// Loads a u16 from the given register and pushes it onto the stack
     LoadReg(Register),
 
-    /// Loads a value from the given address and pushes it onto the stack
     Load(IntegerType, Address),
-
-    /// Pops the top value off the stack and stores it at the given address
+    LoadIndirect(IntegerType),
     Store(IntegerType, Address),
+    StoreIndirect(IntegerType),
 
     Dup(IntegerType),
     Drop(IntegerType),
@@ -82,7 +80,6 @@ pub enum IntegerType {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Register {
     StackPtr,
-    BasePtr,
 }
 
 #[cfg(test)]
