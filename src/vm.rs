@@ -21,6 +21,7 @@ use instruction::{Instruction, IntegerType, Register};
 use program::Program;
 use shell::Shell;
 use byteorder::{BigEndian, ByteOrder};
+use std::collections::LinkedList;
 
 type Endianess = BigEndian;
 
@@ -40,12 +41,12 @@ pub struct VM {
     program: Vec<Instruction>,
     /// The stack pointer
     sp: Address,
-    /// The base pointer
-    bp: Address,
     /// The memory allocated and used by the VM
-    pub mem: Vec<SmallUInt>,
+    mem: Vec<SmallUInt>,
     /// The return value of the VM
     pub return_value: SmallUInt,
+    /// The stack of calls (return addresses)
+    call_stack: LinkedList<Address>,
     /// The Result of the last comparison
     cmp_res: i32,
     halted: bool,
@@ -152,14 +153,13 @@ impl VM {
             Instruction::Drop(ty) => self.drop(ty)?,
             Instruction::Int(0) => self.halt(),
             Instruction::Int(signal) => shell.int(self, signal)?,
-            // Instruction::Call(addr) => self.call(addr),
-            // Instruction::Ret => self.ret(),
+            Instruction::Call(addr) => self.call(addr),
+            Instruction::Ret => self.ret()?,
             Instruction::Jmp(int) => self.jmp(int)?,
             Instruction::Jnz(int) => self.jnz(int)?,
             Instruction::Jz(int) => self.jz(int)?,
             Instruction::Jn(int) => self.jn(int)?,
             Instruction::Jp(int) => self.jp(int)?,
-            _ => bail!("instruction {:?} is not yet implemented", instruction),
         }
 
         Ok(())
@@ -168,6 +168,8 @@ impl VM {
     /// Runs one execution cycle
     fn do_cycle<T: Shell>(&mut self, shell: &mut T) -> Result<()> {
         let current_instruction = self.current_instruction()?;
+
+        println!("CURRENT INSTRUCTION!!! {:?}", current_instruction);
 
         self.advance_pc();
 
@@ -703,7 +705,6 @@ impl VM {
     pub fn load_reg(&mut self, reg: Register) -> Result<()> {
         let ptr = match reg {
             Register::StackPtr => self.sp,
-            Register::BasePtr => self.bp,
         };
 
         self.push_const_u16(ptr)
@@ -795,6 +796,24 @@ impl VM {
         Ok(())
     }
 
+    /// Calls the function at the given address
+    fn call(&mut self, addr: Address) {
+        let call = self.pc;
+        self.call_stack.push_front(call);
+        self.pc = addr;
+    }
+
+    /// Returns from a function call
+    fn ret(&mut self) -> Result<()> {
+        let return_addr = self.call_stack
+            .pop_front()
+            .ok_or(format_err!("cannot return from an empty call stack"))?;
+
+        self.pc = return_addr;
+
+        Ok(())
+    }
+
     /// Jumps unconditionally in the given direction
     pub fn jmp(&mut self, dir: Int) -> Result<()> {
         ensure!(dir != 0, "relative jumps nowhere will hang the program");
@@ -882,7 +901,6 @@ mod tests {
                 Instruction::PushConstI8(-120),
                 Instruction::PushConstI16(-32000),
                 Instruction::LoadReg(Register::StackPtr),
-                Instruction::LoadReg(Register::BasePtr),
                 Instruction::Store(IntegerType::U8, 0xABCD),
                 Instruction::Store(IntegerType::U16, 0xACBD),
                 Instruction::Store(IntegerType::I8, 0xBACD),
@@ -1035,22 +1053,6 @@ mod tests {
 
         let mut vm = VM::default();
         vm.exec(&program, &mut shell).unwrap();
-    }
-
-    #[test] // TODO: This should be removed in the future
-    fn all_instructions() {
-        let instr = vec![Instruction::Ret, Instruction::Call(0xABCD)];
-
-        let mut shell = helper::generate_shell();
-        let mut program = helper::generate_program();
-        program.instructions = instr;
-
-        let mut vm = VM::default();
-        let err = vm.exec(&program, &mut shell).err().expect("error expected");
-        let formatted_err = format!("{}", err);
-
-        assert!(formatted_err.starts_with("instruction"));
-        assert!(formatted_err.ends_with("not yet implemented"));
     }
 
     #[test]
@@ -1905,5 +1907,38 @@ mod tests {
 
         assert_eq!(vm.pop_i8().unwrap(), -120);
         assert_eq!(vm.pop_i8().unwrap(), -120);
+    }
+
+    #[test]
+    fn missing_call_for_ret() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![Instruction::Ret];
+
+        let err = vm.exec(&program, &mut shell).err().unwrap();
+        let formatted_err = format!("{}", err);
+
+        assert_eq!(formatted_err, "cannot return from an empty call stack");
+    }
+
+    #[test]
+    fn regular_call() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::Call(0x0002),
+            Instruction::Int(0),
+            Instruction::PushConstI16(1234),
+            Instruction::PushConstI16(1234),
+            Instruction::Sub(IntegerType::I16),
+            Instruction::Store(IntegerType::I16, 0x0000),
+            Instruction::Ret,
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
     }
 }

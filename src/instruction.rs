@@ -80,7 +80,6 @@ pub enum IntegerType {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Register {
     StackPtr,
-    BasePtr,
 }
 
 #[cfg(test)]
