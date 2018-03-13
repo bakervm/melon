@@ -1814,19 +1814,19 @@ mod tests {
 
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jp(1)];
+        program.instructions = vec![Instruction::Jmp(1), Instruction::Jp(1)];
         vm.cmp_res = 1;
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jn(1)];
+        program.instructions = vec![Instruction::Jmp(1), Instruction::Jn(1)];
         vm.cmp_res = -1;
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jz(1)];
+        program.instructions = vec![Instruction::Jmp(1), Instruction::Jz(1)];
         vm.cmp_res = 0;
         vm.exec(&program, &mut shell).unwrap();
 
-        program.instructions = vec![Instruction::Jnz(1)];
+        program.instructions = vec![Instruction::Jmp(1), Instruction::Jnz(1)];
         vm.cmp_res = 1234;
         vm.exec(&program, &mut shell).unwrap();
     }
