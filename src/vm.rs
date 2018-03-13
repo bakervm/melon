@@ -130,7 +130,7 @@ impl VM {
             Instruction::Or(ty) => self.or(ty)?,
             Instruction::Xor(ty) => self.xor(ty)?,
             Instruction::Not(ty) => self.not(ty)?,
-            // Instruction::Neg(ty) => self.neg(ty)?,
+            Instruction::Neg(ty) => self.neg(ty)?,
             // Instruction::Cmp(ty) => self.cmp(ty)?,
             // Instruction::Inc(ty) => self.inc(ty)?,
             // Instruction::Dec(ty) => self.dec(ty)?,
@@ -525,6 +525,28 @@ impl VM {
         }
     }
 
+    /// Applies a *negation* on the tio stack value
+    pub fn neg(&mut self, ty: IntegerType) -> Result<()> {
+        let addr = self.sp;
+
+        match ty {
+            IntegerType::I8 => {
+                let value = self.read_u8(addr)?;
+                let converted = -(value as SmallInt);
+
+                self.write_u8(addr, converted as SmallUInt)
+            }
+            IntegerType::I16 => {
+                let value = self.read_u16(addr)?;
+                let converted = -(value as Int);
+
+                self.write_u16(addr, converted as UInt)
+            }
+            IntegerType::U8 => bail!("unable to create negative u8"),
+            IntegerType::U16 => bail!("unable to create negative u16"),
+        }
+    }
+
     /// Handler for `Instruction::PushConstU8(SmallUInt)`
     pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
         self.sp -= 1;
@@ -802,13 +824,6 @@ mod tests {
     #[test] // TODO: This should be removed in the future
     fn all_instructions() {
         let instr = vec![
-            Instruction::Neg(IntegerType::U16),
-            Instruction::Shr(IntegerType::U16),
-            Instruction::Shl(IntegerType::U16),
-            Instruction::And(IntegerType::U16),
-            Instruction::Or(IntegerType::U16),
-            Instruction::Xor(IntegerType::U16),
-            Instruction::Not(IntegerType::U16),
             Instruction::Cmp(IntegerType::U16),
             Instruction::Inc(IntegerType::U16),
             Instruction::Dec(IntegerType::U16),
@@ -818,7 +833,6 @@ mod tests {
             Instruction::I16Demote,
             Instruction::Dup(IntegerType::U16),
             Instruction::Drop(IntegerType::U16),
-            Instruction::Int(12),
             Instruction::Ret,
             Instruction::Jmp(0),
             Instruction::Jnz(0),
@@ -1334,5 +1348,38 @@ mod tests {
         vm.exec(&program, &mut shell).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0xFF00);
+    }
+
+    #[test]
+    fn neg_instruction() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::PushConstI8(104),
+            Instruction::Neg(IntegerType::I8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i8().unwrap(), -104);
+
+        program.instructions = vec![
+            Instruction::PushConstI16(-1234),
+            Instruction::Neg(IntegerType::I16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i16().unwrap(), 1234);
+
+        program.instructions = vec![Instruction::Neg(IntegerType::U8)];
+
+        assert!(vm.exec(&program, &mut shell).is_err());
+
+        program.instructions = vec![Instruction::Neg(IntegerType::U16)];
+
+        assert!(vm.exec(&program, &mut shell).is_err());
     }
 }
