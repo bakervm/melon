@@ -133,7 +133,7 @@ impl VM {
             Instruction::Neg(ty) => self.neg(ty)?,
             Instruction::Cmp(ty) => self.cmp(ty)?,
             Instruction::Inc(ty) => self.inc(ty)?,
-            // Instruction::Dec(ty) => self.dec(ty)?,
+            Instruction::Dec(ty) => self.dec(ty)?,
             Instruction::PushConstU8(value) => self.push_const_u8(value)?,
             Instruction::PushConstU16(value) => self.push_const_u16(value)?,
             Instruction::PushConstI8(value) => self.push_const_i8(value)?,
@@ -604,6 +604,30 @@ impl VM {
         }
     }
 
+    /// *Decrements* the top stack value
+    pub fn dec(&mut self, ty: IntegerType) -> Result<()> {
+        let addr = self.sp;
+
+        match ty {
+            IntegerType::U8 => {
+                let value = self.read_u8(addr)?;
+                self.write_u8(addr, value - 1)
+            }
+            IntegerType::U16 => {
+                let value = self.read_u16(addr)?;
+                self.write_u16(addr, value - 1)
+            }
+            IntegerType::I8 => {
+                let value = self.read_u8(addr)? as SmallInt;
+                self.write_u8(addr, (value - 1) as SmallUInt)
+            }
+            IntegerType::I16 => {
+                let value = self.read_u16(addr)? as Int;
+                self.write_u16(addr, (value - 1) as UInt)
+            }
+        }
+    }
+
     /// Handler for `Instruction::PushConstU8(SmallUInt)`
     pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
         self.sp -= 1;
@@ -881,7 +905,6 @@ mod tests {
     #[test] // TODO: This should be removed in the future
     fn all_instructions() {
         let instr = vec![
-            Instruction::Dec(IntegerType::U16),
             Instruction::U8Promote,
             Instruction::U16Demote,
             Instruction::I8Promote,
@@ -1554,6 +1577,74 @@ mod tests {
             Instruction::Inc(IntegerType::I16),
             Instruction::Inc(IntegerType::I16),
             Instruction::Inc(IntegerType::I16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i16().unwrap(), 0);
+    }
+
+    #[test]
+    fn dec_instruction() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::PushConstU8(100),
+            Instruction::Dec(IntegerType::U8),
+            Instruction::Dec(IntegerType::U8),
+            Instruction::Dec(IntegerType::U8),
+            Instruction::Dec(IntegerType::U8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u8().unwrap(), 96);
+
+        program.instructions = vec![
+            Instruction::PushConstU16(20000),
+            Instruction::Dec(IntegerType::U16),
+            Instruction::Dec(IntegerType::U16),
+            Instruction::Dec(IntegerType::U16),
+            Instruction::Dec(IntegerType::U16),
+            Instruction::Dec(IntegerType::U16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u16().unwrap(), 19995);
+
+        program.instructions = vec![
+            Instruction::PushConstI8(32),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+            Instruction::Dec(IntegerType::I8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i8().unwrap(), 16);
+
+        program.instructions = vec![
+            Instruction::PushConstI16(4),
+            Instruction::Dec(IntegerType::I16),
+            Instruction::Dec(IntegerType::I16),
+            Instruction::Dec(IntegerType::I16),
+            Instruction::Dec(IntegerType::I16),
         ];
 
         vm.exec(&program, &mut shell).unwrap();
