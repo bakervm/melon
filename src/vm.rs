@@ -46,7 +46,7 @@ pub struct VM {
     pub mem: Vec<SmallUInt>,
     /// The return value of the VM
     pub return_value: SmallUInt,
-    cmp_res: Int,
+    cmp_res: i32,
     halted: bool,
 }
 
@@ -131,7 +131,7 @@ impl VM {
             Instruction::Xor(ty) => self.xor(ty)?,
             Instruction::Not(ty) => self.not(ty)?,
             Instruction::Neg(ty) => self.neg(ty)?,
-            // Instruction::Cmp(ty) => self.cmp(ty)?,
+            Instruction::Cmp(ty) => self.cmp(ty)?,
             // Instruction::Inc(ty) => self.inc(ty)?,
             // Instruction::Dec(ty) => self.dec(ty)?,
             Instruction::PushConstU8(value) => self.push_const_u8(value)?,
@@ -547,6 +547,39 @@ impl VM {
         }
     }
 
+    /// Compares the top two values of the stack by applying a subtraction on them and saving the
+    /// result in the cmp register
+    pub fn cmp(&mut self, ty: IntegerType) -> Result<()> {
+        match ty {
+            IntegerType::U8 => {
+                let (a, b) = self.pop_u8_lr()?;
+                self.cmp_res = (a - b) as i32;
+                self.push_const_u8(a)?;
+                self.push_const_u8(b)?;
+            }
+            IntegerType::U16 => {
+                let (a, b) = self.pop_u16_lr()?;
+                self.cmp_res = (a - b) as i32;
+                self.push_const_u16(a)?;
+                self.push_const_u16(b)?;
+            }
+            IntegerType::I8 => {
+                let (a, b) = self.pop_i8_lr()?;
+                self.cmp_res = (a - b) as i32;
+                self.push_const_i8(a)?;
+                self.push_const_i8(b)?;
+            }
+            IntegerType::I16 => {
+                let (a, b) = self.pop_i16_lr()?;
+                self.cmp_res = (a - b) as i32;
+                self.push_const_i16(a)?;
+                self.push_const_i16(b)?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Handler for `Instruction::PushConstU8(SmallUInt)`
     pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
         self.sp -= 1;
@@ -824,7 +857,6 @@ mod tests {
     #[test] // TODO: This should be removed in the future
     fn all_instructions() {
         let instr = vec![
-            Instruction::Cmp(IntegerType::U16),
             Instruction::Inc(IntegerType::U16),
             Instruction::Dec(IntegerType::U16),
             Instruction::U8Promote,
@@ -1381,5 +1413,60 @@ mod tests {
         program.instructions = vec![Instruction::Neg(IntegerType::U16)];
 
         assert!(vm.exec(&program, &mut shell).is_err());
+    }
+
+    #[test]
+    fn cmp_instruction() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::PushConstU8(104),
+            Instruction::PushConstU8(98),
+            Instruction::Cmp(IntegerType::U8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.cmp_res, 6);
+        assert_eq!(vm.pop_u8().unwrap(), 98);
+        assert_eq!(vm.pop_u8().unwrap(), 104);
+
+        program.instructions = vec![
+            Instruction::PushConstU16(20000),
+            Instruction::PushConstU16(20000),
+            Instruction::Cmp(IntegerType::U16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.cmp_res, 0);
+        assert_eq!(vm.pop_u16().unwrap(), 20000);
+        assert_eq!(vm.pop_u16().unwrap(), 20000);
+
+        program.instructions = vec![
+            Instruction::PushConstI8(-32),
+            Instruction::PushConstI8(-64),
+            Instruction::Cmp(IntegerType::I8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.cmp_res, 32);
+        assert_eq!(vm.pop_i8().unwrap(), -64);
+        assert_eq!(vm.pop_i8().unwrap(), -32);
+
+        program.instructions = vec![
+            Instruction::PushConstI16(-3200),
+            Instruction::PushConstI16(-6400),
+            Instruction::Cmp(IntegerType::I16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.cmp_res, 3200);
+        assert_eq!(vm.pop_i16().unwrap(), -6400);
+        assert_eq!(vm.pop_i16().unwrap(), -3200);
     }
 }
