@@ -1881,6 +1881,8 @@ mod tests {
         program.instructions = vec![
             Instruction::PushConstI16(-1234),
             Instruction::PushConstU16(0x0FFF),
+            Instruction::PushConstI8(-3),
+            Instruction::Drop(IntegerType::I8),
             Instruction::Drop(IntegerType::U16),
             Instruction::Dup(IntegerType::I16),
         ];
@@ -1893,6 +1895,8 @@ mod tests {
         program.instructions = vec![
             Instruction::PushConstI8(-120),
             Instruction::PushConstU8(0xFF),
+            Instruction::PushConstU16(0xFFFF),
+            Instruction::Drop(IntegerType::U16),
             Instruction::Drop(IntegerType::U8),
             Instruction::Dup(IntegerType::I8),
         ];
