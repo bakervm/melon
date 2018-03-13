@@ -132,7 +132,7 @@ impl VM {
             Instruction::Not(ty) => self.not(ty)?,
             Instruction::Neg(ty) => self.neg(ty)?,
             Instruction::Cmp(ty) => self.cmp(ty)?,
-            // Instruction::Inc(ty) => self.inc(ty)?,
+            Instruction::Inc(ty) => self.inc(ty)?,
             // Instruction::Dec(ty) => self.dec(ty)?,
             Instruction::PushConstU8(value) => self.push_const_u8(value)?,
             Instruction::PushConstU16(value) => self.push_const_u16(value)?,
@@ -547,7 +547,7 @@ impl VM {
         }
     }
 
-    /// Compares the top two values of the stack by applying a subtraction on them and saving the
+    /// *Compares* the top two values of the stack by applying a subtraction on them and saving the
     /// result in the cmp register
     pub fn cmp(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
@@ -578,6 +578,30 @@ impl VM {
         }
 
         Ok(())
+    }
+
+    /// *Increments* the top stack value
+    pub fn inc(&mut self, ty: IntegerType) -> Result<()> {
+        let addr = self.sp;
+
+        match ty {
+            IntegerType::U8 => {
+                let value = self.read_u8(addr)?;
+                self.write_u8(addr, value + 1)
+            }
+            IntegerType::U16 => {
+                let value = self.read_u16(addr)?;
+                self.write_u16(addr, value + 1)
+            }
+            IntegerType::I8 => {
+                let value = self.read_u8(addr)? as SmallInt;
+                self.write_u8(addr, (value + 1) as SmallUInt)
+            }
+            IntegerType::I16 => {
+                let value = self.read_u16(addr)? as Int;
+                self.write_u16(addr, (value + 1) as UInt)
+            }
+        }
     }
 
     /// Handler for `Instruction::PushConstU8(SmallUInt)`
@@ -857,7 +881,6 @@ mod tests {
     #[test] // TODO: This should be removed in the future
     fn all_instructions() {
         let instr = vec![
-            Instruction::Inc(IntegerType::U16),
             Instruction::Dec(IntegerType::U16),
             Instruction::U8Promote,
             Instruction::U16Demote,
@@ -1468,5 +1491,73 @@ mod tests {
         assert_eq!(vm.cmp_res, 3200);
         assert_eq!(vm.pop_i16().unwrap(), -6400);
         assert_eq!(vm.pop_i16().unwrap(), -3200);
+    }
+
+    #[test]
+    fn inc_instruction() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::PushConstU8(100),
+            Instruction::Inc(IntegerType::U8),
+            Instruction::Inc(IntegerType::U8),
+            Instruction::Inc(IntegerType::U8),
+            Instruction::Inc(IntegerType::U8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u8().unwrap(), 104);
+
+        program.instructions = vec![
+            Instruction::PushConstU16(20000),
+            Instruction::Inc(IntegerType::U16),
+            Instruction::Inc(IntegerType::U16),
+            Instruction::Inc(IntegerType::U16),
+            Instruction::Inc(IntegerType::U16),
+            Instruction::Inc(IntegerType::U16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u16().unwrap(), 20005);
+
+        program.instructions = vec![
+            Instruction::PushConstI8(-32),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+            Instruction::Inc(IntegerType::I8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i8().unwrap(), -16);
+
+        program.instructions = vec![
+            Instruction::PushConstI16(-4),
+            Instruction::Inc(IntegerType::I16),
+            Instruction::Inc(IntegerType::I16),
+            Instruction::Inc(IntegerType::I16),
+            Instruction::Inc(IntegerType::I16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i16().unwrap(), 0);
     }
 }
