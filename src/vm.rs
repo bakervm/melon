@@ -193,14 +193,14 @@ impl VM {
         Ok(())
     }
 
-    /// Returns the small uint at the given address
+    /// Returns the u8 at the given address
     pub fn read_u8(&mut self, addr: Address) -> Result<SmallUInt> {
         self.ensure_valid_mem_addr(addr)?;
 
         Ok(self.mem[addr as usize])
     }
 
-    /// Writes the given small uint to the given address
+    /// Writes the given u8 to the given address
     pub fn write_u8(&mut self, addr: Address, value: SmallUInt) -> Result<()> {
         self.ensure_valid_mem_addr(addr)?;
 
@@ -209,7 +209,7 @@ impl VM {
         Ok(())
     }
 
-    /// Returns the uint at the given address
+    /// Returns the u16 at the given address
     pub fn read_u16(&mut self, addr: Address) -> Result<UInt> {
         self.ensure_valid_mem_addr(addr + 1)?;
 
@@ -220,7 +220,7 @@ impl VM {
         Ok(value)
     }
 
-    /// Writes the given uint to the given address
+    /// Writes the given u16 to the given address
     pub fn write_u16(&mut self, addr: Address, value: UInt) -> Result<()> {
         self.ensure_valid_mem_addr(addr + 1)?;
 
@@ -231,7 +231,7 @@ impl VM {
         Ok(())
     }
 
-    /// Helper method for popping a SmallUInt value off the stack
+    /// Helper method for popping a u8 value off the stack
     pub fn pop_u8(&mut self) -> Result<SmallUInt> {
         let addr = self.sp;
 
@@ -242,7 +242,7 @@ impl VM {
         Ok(value)
     }
 
-    /// Helper method for popping a UInt value off the stack
+    /// Helper method for popping a u16 value off the stack
     pub fn pop_u16(&mut self) -> Result<UInt> {
         let addr = self.sp;
 
@@ -253,7 +253,7 @@ impl VM {
         Ok(value)
     }
 
-    /// Helper method for popping a SmallInt value off the stack
+    /// Helper method for popping a i8 value off the stack
     pub fn pop_i8(&mut self) -> Result<SmallInt> {
         let addr = self.sp;
 
@@ -264,7 +264,7 @@ impl VM {
         Ok(value as SmallInt)
     }
 
-    /// Helper method for popping a Int value off the stack
+    /// Helper method for popping a i16 value off the stack
     pub fn pop_i16(&mut self) -> Result<Int> {
         let addr = self.sp;
 
