@@ -129,8 +129,8 @@ impl VM {
             Instruction::And(ty) => self.and(ty)?,
             Instruction::Or(ty) => self.or(ty)?,
             Instruction::Xor(ty) => self.xor(ty)?,
+            Instruction::Not(ty) => self.not(ty)?,
             // Instruction::Neg(ty) => self.neg(ty)?,
-            // Instruction::Not(ty) => self.not(ty)?,
             // Instruction::Cmp(ty) => self.cmp(ty)?,
             // Instruction::Inc(ty) => self.inc(ty)?,
             // Instruction::Dec(ty) => self.dec(ty)?,
@@ -301,84 +301,6 @@ impl VM {
     // ####################
     // INSTRUCTION HANDLERS
     // ####################
-
-    /// Handler for `Instruction::PushConstU8(SmallUInt)`
-    pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
-        self.sp -= 1;
-
-        let addr = self.sp;
-
-        self.write_u8(addr, value)
-    }
-
-    /// Handler for `Instruction::PushConstU16(UInt)`
-    pub fn push_const_u16(&mut self, value: UInt) -> Result<()> {
-        self.sp -= 2;
-
-        let addr = self.sp;
-
-        self.write_u16(addr, value)
-    }
-
-    /// Handler for `Instruction::PushConstI8(SmallInt)`
-    pub fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
-        self.sp -= 1;
-
-        let addr = self.sp;
-
-        self.write_u8(addr, value as SmallUInt)
-    }
-
-    /// Handler for `Instruction::PushConstI16(Int)`
-    pub fn push_const_i16(&mut self, value: Int) -> Result<()> {
-        self.sp -= 2;
-
-        let addr = self.sp;
-
-        self.write_u16(addr, value as UInt)
-    }
-
-    /// Handler for `Instruction::LoadReg(Register)`
-    pub fn load_reg(&mut self, reg: Register) -> Result<()> {
-        let ptr = match reg {
-            Register::StackPtr => self.sp,
-            Register::BasePtr => self.bp,
-        };
-
-        self.push_const_u16(ptr)
-    }
-
-    /// Handler for `Instruction::Load(IntegerType, Address)`
-    pub fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
-        match ty {
-            IntegerType::U8 | IntegerType::I8 => {
-                let value = self.read_u8(addr)?;
-                self.push_const_u8(value)?;
-            }
-            IntegerType::U16 | IntegerType::I16 => {
-                let value = self.read_u16(addr)?;
-                self.push_const_u16(value)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Handler for `Instruction::Store(IntegerType, Address)`
-    pub fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
-        match ty {
-            IntegerType::U8 | IntegerType::I8 => {
-                let value = self.pop_u8()?;
-                self.write_u8(addr, value)?;
-            }
-            IntegerType::U16 | IntegerType::I16 => {
-                let value = self.pop_u16()?;
-                self.write_u16(addr, value)?;
-            }
-        }
-
-        Ok(())
-    }
 
     /// Pops two values of the given type off the stack, *adds* them together and pushes the result
     /// back on the stack
@@ -585,6 +507,100 @@ impl VM {
                 self.push_const_i16(a ^ b)
             }
         }
+    }
+
+    /// Applies a *bitwise not* operation to the top stack value
+    pub fn not(&mut self, ty: IntegerType) -> Result<()> {
+        let addr = self.sp;
+
+        match ty {
+            IntegerType::U8 | IntegerType::I8 => {
+                let value = self.read_u8(addr)?;
+                self.write_u8(addr, !value)
+            }
+            IntegerType::U16 | IntegerType::I16 => {
+                let value = self.read_u16(addr)?;
+                self.write_u16(addr, !value)
+            }
+        }
+    }
+
+    /// Handler for `Instruction::PushConstU8(SmallUInt)`
+    pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
+        self.sp -= 1;
+
+        let addr = self.sp;
+
+        self.write_u8(addr, value)
+    }
+
+    /// Handler for `Instruction::PushConstU16(UInt)`
+    pub fn push_const_u16(&mut self, value: UInt) -> Result<()> {
+        self.sp -= 2;
+
+        let addr = self.sp;
+
+        self.write_u16(addr, value)
+    }
+
+    /// Handler for `Instruction::PushConstI8(SmallInt)`
+    pub fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
+        self.sp -= 1;
+
+        let addr = self.sp;
+
+        self.write_u8(addr, value as SmallUInt)
+    }
+
+    /// Handler for `Instruction::PushConstI16(Int)`
+    pub fn push_const_i16(&mut self, value: Int) -> Result<()> {
+        self.sp -= 2;
+
+        let addr = self.sp;
+
+        self.write_u16(addr, value as UInt)
+    }
+
+    /// Handler for `Instruction::LoadReg(Register)`
+    pub fn load_reg(&mut self, reg: Register) -> Result<()> {
+        let ptr = match reg {
+            Register::StackPtr => self.sp,
+            Register::BasePtr => self.bp,
+        };
+
+        self.push_const_u16(ptr)
+    }
+
+    /// Handler for `Instruction::Load(IntegerType, Address)`
+    pub fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
+        match ty {
+            IntegerType::U8 | IntegerType::I8 => {
+                let value = self.read_u8(addr)?;
+                self.push_const_u8(value)?;
+            }
+            IntegerType::U16 | IntegerType::I16 => {
+                let value = self.read_u16(addr)?;
+                self.push_const_u16(value)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handler for `Instruction::Store(IntegerType, Address)`
+    pub fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
+        match ty {
+            IntegerType::U8 | IntegerType::I8 => {
+                let value = self.pop_u8()?;
+                self.write_u8(addr, value)?;
+            }
+            IntegerType::U16 | IntegerType::I16 => {
+                let value = self.pop_u16()?;
+                self.write_u16(addr, value)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
