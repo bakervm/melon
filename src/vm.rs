@@ -154,11 +154,11 @@ impl VM {
             Instruction::Int(signal) => shell.int(self, signal)?,
             // Instruction::Call(addr) => self.call(addr),
             // Instruction::Ret => self.ret(),
-            Instruction::Jmp(int) => self.jmp(int),
-            Instruction::Jnz(int) => self.jnz(int),
-            Instruction::Jz(int) => self.jz(int),
-            Instruction::Jn(int) => self.jn(int),
-            Instruction::Jp(int) => self.jp(int),
+            Instruction::Jmp(int) => self.jmp(int)?,
+            Instruction::Jnz(int) => self.jnz(int)?,
+            Instruction::Jz(int) => self.jz(int)?,
+            Instruction::Jn(int) => self.jn(int)?,
+            Instruction::Jp(int) => self.jp(int)?,
             _ => bail!("instruction {:?} is not yet implemented", instruction),
         }
 
@@ -742,38 +742,49 @@ impl VM {
     }
 
     /// Jumps unconditionally in the given direction
-    pub fn jmp(&mut self, dir: Int) {
+    pub fn jmp(&mut self, dir: Int) -> Result<()> {
+        ensure!(dir != 0, "relative jumps nowhere will hang the program");
         // The (-1) is because the program counter has already been advanced
         let addr = ((self.pc as Int) - 1) + dir;
         self.pc = addr as Address;
+
+        Ok(())
     }
 
     /// Jumps if the value of the cmp register is not zero, in the given direction
-    pub fn jnz(&mut self, dir: Int) {
+    pub fn jnz(&mut self, dir: Int) -> Result<()> {
         if self.cmp_res != 0 {
-            self.jmp(dir);
+            self.jmp(dir)?;
         }
+
+        Ok(())
     }
 
     /// Jumps if the value of the cmp register is zero, in the given direction
-    pub fn jz(&mut self, dir: Int) {
+    pub fn jz(&mut self, dir: Int) -> Result<()> {
         if self.cmp_res == 0 {
-            self.jmp(dir);
+            self.jmp(dir)?;
         }
+
+        Ok(())
     }
 
     /// Jumps if the value of the cmp register is negative, in the given direction
-    pub fn jn(&mut self, dir: Int) {
+    pub fn jn(&mut self, dir: Int) -> Result<()> {
         if self.cmp_res.is_negative() {
-            self.jmp(dir);
+            self.jmp(dir)?;
         }
+
+        Ok(())
     }
 
     /// Jumps if the value of the cmp register is positive, in the given direction
-    pub fn jp(&mut self, dir: Int) {
+    pub fn jp(&mut self, dir: Int) -> Result<()> {
         if self.cmp_res.is_positive() {
-            self.jmp(dir);
+            self.jmp(dir)?;
         }
+
+        Ok(())
     }
 }
 
