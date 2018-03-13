@@ -145,9 +145,9 @@ impl VM {
             Instruction::PushConstI16(value) => self.push_const_i16(value)?,
             Instruction::LoadReg(reg) => self.load_reg(reg)?,
             Instruction::Load(ty, addr) => self.load(ty, addr)?,
-            // Instruction::LoadIndirect(ty) => self.load_indirect(ty)?,
+            Instruction::LoadIndirect(ty) => self.load_indirect(ty)?,
             Instruction::Store(ty, addr) => self.store(ty, addr)?,
-            // Instruction::StoreIndirect(ty) => self.store_indirect(ty)?,
+            Instruction::StoreIndirect(ty) => self.store_indirect(ty)?,
             // Instruction::Dup(ty) => self.dup(ty)?,
             // Instruction::Drop(ty) => self.drop(ty)?,
             Instruction::Int(0) => self.halt(),
@@ -663,7 +663,7 @@ impl VM {
         self.push_const_i8(value as SmallInt)
     }
 
-    /// Handler for `Instruction::PushConstU8(SmallUInt)`
+    /// Pushes the given u8 onto the stack
     pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
         self.sp -= 1;
 
@@ -672,7 +672,7 @@ impl VM {
         self.write_u8(addr, value)
     }
 
-    /// Handler for `Instruction::PushConstU16(UInt)`
+    /// Pushes the given u16 onto the stack
     pub fn push_const_u16(&mut self, value: UInt) -> Result<()> {
         self.sp -= 2;
 
@@ -681,7 +681,7 @@ impl VM {
         self.write_u16(addr, value)
     }
 
-    /// Handler for `Instruction::PushConstI8(SmallInt)`
+    /// Pushes the given i8 onto the stack
     pub fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
         self.sp -= 1;
 
@@ -690,7 +690,7 @@ impl VM {
         self.write_u8(addr, value as SmallUInt)
     }
 
-    /// Handler for `Instruction::PushConstI16(Int)`
+    /// Pushes the given i16 onto the stack
     pub fn push_const_i16(&mut self, value: Int) -> Result<()> {
         self.sp -= 2;
 
@@ -699,7 +699,7 @@ impl VM {
         self.write_u16(addr, value as UInt)
     }
 
-    /// Handler for `Instruction::LoadReg(Register)`
+    /// Loads the value from the given register and pushes it onto the stack
     pub fn load_reg(&mut self, reg: Register) -> Result<()> {
         let ptr = match reg {
             Register::StackPtr => self.sp,
@@ -709,7 +709,7 @@ impl VM {
         self.push_const_u16(ptr)
     }
 
-    /// Handler for `Instruction::Load(IntegerType, Address)`
+    /// Loads the value from the given address and pushes it to the stack
     pub fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
@@ -725,7 +725,15 @@ impl VM {
         Ok(())
     }
 
-    /// Handler for `Instruction::Store(IntegerType, Address)`
+    /// Like *load* but takes the address off the stack before storing
+    pub fn load_indirect(&mut self, ty: IntegerType) -> Result<()> {
+        let addr = self.pop_u16()?;
+        self.load(ty, addr)?;
+
+        Ok(())
+    }
+
+    /// Takes the top value off the stack and stores it at the given address
     pub fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
@@ -737,6 +745,14 @@ impl VM {
                 self.write_u16(addr, value)?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Like *store* but takes the address off the stack before storing
+    pub fn store_indirect(&mut self, ty: IntegerType) -> Result<()> {
+        let addr = self.pop_u16()?;
+        self.store(ty, addr)?;
 
         Ok(())
     }
@@ -1789,5 +1805,26 @@ mod tests {
         program.instructions = vec![Instruction::Jnz(1)];
         vm.cmp_res = 1234;
         vm.exec(&program, &mut shell).unwrap();
+    }
+
+    #[test]
+    fn indirect_addr() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::PushConstI16(-1234),
+            Instruction::PushConstU16(0x0FFF),
+            Instruction::StoreIndirect(IntegerType::I16),
+            Instruction::PushConstU16(0x0FFF - 1),
+            Instruction::PushConstU16(1),
+            Instruction::Add(IntegerType::U16),
+            Instruction::LoadIndirect(IntegerType::I16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i16().unwrap(), -1234);
     }
 }
