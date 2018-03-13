@@ -46,6 +46,7 @@ pub struct VM {
     pub mem: Vec<SmallUInt>,
     /// The return value of the VM
     pub return_value: SmallUInt,
+    /// The Result of the last comparison
     cmp_res: i32,
     halted: bool,
 }
@@ -60,10 +61,10 @@ impl VM {
             "wrong core version"
         );
 
-        if let Some(mem_size) = program.mem_size {
-            ensure!(mem_size <= MAX_MEM_PAGE_COUNT, "requested memory too big");
+        if let Some(num_pages) = program.num_pages {
+            ensure!(num_pages <= MAX_MEM_PAGE_COUNT, "requested memory too big");
 
-            ensure!(mem_size > 0, "requested memory too small");
+            ensure!(num_pages > 0, "requested memory too small");
         }
 
         self.reset(&program)?;
@@ -85,7 +86,7 @@ impl VM {
     fn reset(&mut self, program: &Program) -> Result<()> {
         *self = Default::default();
 
-        let mem_size = program.mem_size.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
+        let mem_size = program.num_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
 
         ensure!(
             self.program.len() < mem_size as usize,
@@ -144,14 +145,16 @@ impl VM {
             Instruction::PushConstI16(value) => self.push_const_i16(value)?,
             Instruction::LoadReg(reg) => self.load_reg(reg)?,
             Instruction::Load(ty, addr) => self.load(ty, addr)?,
+            // Instruction::LoadIndirect(ty) => self.load_indirect(ty)?,
             Instruction::Store(ty, addr) => self.store(ty, addr)?,
+            // Instruction::StoreIndirect(ty) => self.store_indirect(ty)?,
             // Instruction::Dup(ty) => self.dup(ty)?,
             // Instruction::Drop(ty) => self.drop(ty)?,
             Instruction::Int(0) => self.halt(),
             Instruction::Int(signal) => shell.int(self, signal)?,
             // Instruction::Call(addr) => self.call(addr),
             // Instruction::Ret => self.ret(),
-            // Instruction::Jmp(int) => self.jmp(int),
+            Instruction::Jmp(int) => self.jmp(int),
             // Instruction::Jnz(int) => self.jnz(int),
             // Instruction::Jz(int) => self.jz(int),
             // Instruction::Jn(int) => self.jn(int),
@@ -737,6 +740,13 @@ impl VM {
 
         Ok(())
     }
+
+    /// Jumps unconditionally in the given direction
+    pub fn jmp(&mut self, dir: Int) {
+        // The (-1) is because the program counter has already been advanced
+        let addr = ((self.pc as Int) - 1) + dir;
+        self.pc = addr as Address;
+    }
 }
 
 #[cfg(test)]
@@ -768,7 +778,7 @@ mod tests {
                 core_version: env!("CARGO_PKG_VERSION").to_owned(),
                 shell_id: BogusShell::ID.to_owned(),
                 instructions: generate_instructions(),
-                mem_size: Some(63),
+                num_pages: Some(63),
             }
         }
 
@@ -928,7 +938,7 @@ mod tests {
     fn mem_too_small() {
         let mut shell = helper::generate_shell();
         let mut program = helper::generate_program();
-        program.mem_size = Some(1);
+        program.num_pages = Some(1);
 
         let mut vm = VM::default();
         vm.exec(&program, &mut shell).unwrap();

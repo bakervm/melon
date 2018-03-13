@@ -28,6 +28,6 @@ pub struct Program {
     pub shell_id: String,
     /// The instuctions of the program
     pub instructions: Vec<Instruction>,
-    /// (Optional) The size of the used memory in MB
-    pub mem_size: Option<Address>,
+    /// (Optional) The number of allocated memory pages (1 page = 1024 Byte)
+    pub num_pages: Option<Address>,
 }
