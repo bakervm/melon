@@ -134,6 +134,10 @@ impl VM {
             Instruction::Cmp(ty) => self.cmp(ty)?,
             Instruction::Inc(ty) => self.inc(ty)?,
             Instruction::Dec(ty) => self.dec(ty)?,
+            Instruction::U8Promote => self.u8_promote()?,
+            Instruction::U16Demote => self.u16_demote()?,
+            Instruction::I8Promote => self.i8_promote()?,
+            Instruction::I16Demote => self.i16_demote()?,
             Instruction::PushConstU8(value) => self.push_const_u8(value)?,
             Instruction::PushConstU16(value) => self.push_const_u16(value)?,
             Instruction::PushConstI8(value) => self.push_const_i8(value)?,
@@ -626,6 +630,34 @@ impl VM {
                 self.write_u16(addr, (value - 1) as UInt)
             }
         }
+    }
+
+    /// Converts a u8 to a u16
+    pub fn u8_promote(&mut self) -> Result<()> {
+        let value = self.pop_u8()?;
+
+        self.push_const_u16(value as UInt)
+    }
+
+    /// Converts a u16 to a u8
+    pub fn u16_demote(&mut self) -> Result<()> {
+        let value = self.pop_u16()?;
+
+        self.push_const_u8(value as SmallUInt)
+    }
+
+    /// Converts a i8 to a i16
+    pub fn i8_promote(&mut self) -> Result<()> {
+        let value = self.pop_i8()?;
+
+        self.push_const_i16(value as Int)
+    }
+
+    /// Converts a i16 to a i8
+    pub fn i16_demote(&mut self) -> Result<()> {
+        let value = self.pop_i16()?;
+
+        self.push_const_i8(value as SmallInt)
     }
 
     /// Handler for `Instruction::PushConstU8(SmallUInt)`
@@ -1650,5 +1682,28 @@ mod tests {
         vm.exec(&program, &mut shell).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 0);
+    }
+
+    #[test]
+    fn promotion_demotion() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![Instruction::PushConstU8(90), Instruction::U8Promote];
+        vm.exec(&program, &mut shell).unwrap();
+        assert_eq!(vm.pop_u16().unwrap(), 90);
+
+        program.instructions = vec![Instruction::PushConstU16(190), Instruction::U16Demote];
+        vm.exec(&program, &mut shell).unwrap();
+        assert_eq!(vm.pop_u8().unwrap(), 190);
+
+        program.instructions = vec![Instruction::PushConstI8(-90), Instruction::I8Promote];
+        vm.exec(&program, &mut shell).unwrap();
+        assert_eq!(vm.pop_i16().unwrap(), -90);
+
+        program.instructions = vec![Instruction::PushConstI16(-120), Instruction::I16Demote];
+        vm.exec(&program, &mut shell).unwrap();
+        assert_eq!(vm.pop_i8().unwrap(), -120);
     }
 }
