@@ -1950,4 +1950,19 @@ mod tests {
 
         vm.exec(&program, &mut shell).unwrap();
     }
+
+    #[test]
+    #[should_panic]
+    fn pop_corrupted_stack() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+        program.instructions = vec![
+            Instruction::PushConstU16(0xAABB),
+            Instruction::Drop(IntegerType::U8),
+            Instruction::Drop(IntegerType::U16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+    }
 }
