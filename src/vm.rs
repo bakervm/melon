@@ -120,9 +120,6 @@ impl VM {
         shell: &mut T,
     ) -> Result<()> {
         match instruction {
-            Instruction::Int(0) => self.halt(),
-            Instruction::Int(signal) => shell.int(self, signal)?,
-
             Instruction::Add(ty) => self.add(ty)?,
             Instruction::Sub(ty) => self.sub(ty)?,
             Instruction::Mul(ty) => self.mul(ty)?,
@@ -132,7 +129,11 @@ impl VM {
             Instruction::And(ty) => self.and(ty)?,
             Instruction::Or(ty) => self.or(ty)?,
             Instruction::Xor(ty) => self.xor(ty)?,
-
+            // Instruction::Neg(ty) => self.neg(ty)?,
+            // Instruction::Not(ty) => self.not(ty)?,
+            // Instruction::Cmp(ty) => self.cmp(ty)?,
+            // Instruction::Inc(ty) => self.inc(ty)?,
+            // Instruction::Dec(ty) => self.dec(ty)?,
             Instruction::PushConstU8(value) => self.push_const_u8(value)?,
             Instruction::PushConstU16(value) => self.push_const_u16(value)?,
             Instruction::PushConstI8(value) => self.push_const_i8(value)?,
@@ -140,6 +141,17 @@ impl VM {
             Instruction::LoadReg(reg) => self.load_reg(reg)?,
             Instruction::Load(ty, addr) => self.load(ty, addr)?,
             Instruction::Store(ty, addr) => self.store(ty, addr)?,
+            // Instruction::Dup(ty) => self.dup(ty)?,
+            // Instruction::Drop(ty) => self.drop(ty)?,
+            Instruction::Int(0) => self.halt(),
+            Instruction::Int(signal) => shell.int(self, signal)?,
+            // Instruction::Call(addr) => self.call(addr),
+            // Instruction::Ret => self.ret(),
+            // Instruction::Jmp(int) => self.jmp(int),
+            // Instruction::Jnz(int) => self.jnz(int),
+            // Instruction::Jz(int) => self.jz(int),
+            // Instruction::Jn(int) => self.jn(int),
+            // Instruction::Jp(int) => self.jp(int),
             _ => bail!("instruction {:?} is not yet implemented", instruction),
         }
 
