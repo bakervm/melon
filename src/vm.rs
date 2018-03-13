@@ -1292,4 +1292,47 @@ mod tests {
 
         assert_eq!(vm.pop_i16().unwrap(), 0x00FF);
     }
+
+    #[test]
+    fn not_instruction() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::PushConstU8(0x0F),
+            Instruction::Not(IntegerType::U8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u8().unwrap(), 0xF0);
+
+        program.instructions = vec![
+            Instruction::PushConstU16(0xFF00),
+            Instruction::Not(IntegerType::U16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u16().unwrap(), 0x00FF);
+
+        program.instructions = vec![
+            Instruction::PushConstI8(0x0F),
+            Instruction::Not(IntegerType::I8),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u8().unwrap(), 0xF0);
+
+        program.instructions = vec![
+            Instruction::PushConstI16(0x00FF),
+            Instruction::Not(IntegerType::I16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_u16().unwrap(), 0xFF00);
+    }
 }
