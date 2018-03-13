@@ -148,8 +148,8 @@ impl VM {
             Instruction::LoadIndirect(ty) => self.load_indirect(ty)?,
             Instruction::Store(ty, addr) => self.store(ty, addr)?,
             Instruction::StoreIndirect(ty) => self.store_indirect(ty)?,
-            // Instruction::Dup(ty) => self.dup(ty)?,
-            // Instruction::Drop(ty) => self.drop(ty)?,
+            Instruction::Dup(ty) => self.dup(ty)?,
+            Instruction::Drop(ty) => self.drop(ty)?,
             Instruction::Int(0) => self.halt(),
             Instruction::Int(signal) => shell.int(self, signal)?,
             // Instruction::Call(addr) => self.call(addr),
@@ -757,6 +757,44 @@ impl VM {
         Ok(())
     }
 
+    /// Duplicates the top stack value and pushes it onto the stack
+    pub fn dup(&mut self, ty: IntegerType) -> Result<()> {
+        let addr = self.sp;
+
+        match ty {
+            IntegerType::U8 | IntegerType::I8 => {
+                let value = self.read_u8(addr)?;
+                self.push_const_u8(value)?;
+            }
+            IntegerType::U16 | IntegerType::I16 => {
+                let value = self.read_u16(addr)?;
+                self.push_const_u16(value)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Discards the top stack value
+    pub fn drop(&mut self, ty: IntegerType) -> Result<()> {
+        match ty {
+            IntegerType::U8 => {
+                self.pop_u8()?;
+            }
+            IntegerType::U16 => {
+                self.pop_u16()?;
+            }
+            IntegerType::I8 => {
+                self.pop_i8()?;
+            }
+            IntegerType::I16 => {
+                self.pop_i16()?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Jumps unconditionally in the given direction
     pub fn jmp(&mut self, dir: Int) -> Result<()> {
         ensure!(dir != 0, "relative jumps nowhere will hang the program");
@@ -1001,21 +1039,7 @@ mod tests {
 
     #[test] // TODO: This should be removed in the future
     fn all_instructions() {
-        let instr = vec![
-            Instruction::U8Promote,
-            Instruction::U16Demote,
-            Instruction::I8Promote,
-            Instruction::I16Demote,
-            Instruction::Dup(IntegerType::U16),
-            Instruction::Drop(IntegerType::U16),
-            Instruction::Ret,
-            Instruction::Jmp(0),
-            Instruction::Jnz(0),
-            Instruction::Jz(0),
-            Instruction::Jn(0),
-            Instruction::Jp(0),
-            Instruction::Call(0xABCD),
-        ];
+        let instr = vec![Instruction::Ret, Instruction::Call(0xABCD)];
 
         let mut shell = helper::generate_shell();
         let mut program = helper::generate_program();
@@ -1821,6 +1845,24 @@ mod tests {
             Instruction::PushConstU16(1),
             Instruction::Add(IntegerType::U16),
             Instruction::LoadIndirect(IntegerType::I16),
+        ];
+
+        vm.exec(&program, &mut shell).unwrap();
+
+        assert_eq!(vm.pop_i16().unwrap(), -1234);
+    }
+
+    #[test]
+    fn dup_drop() {
+        let mut vm = VM::default();
+        let mut shell = helper::generate_shell();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![
+            Instruction::PushConstI16(-1234),
+            Instruction::PushConstU16(0x0FFF),
+            Instruction::Drop(IntegerType::U16),
+            Instruction::Dup(IntegerType::I16),
         ];
 
         vm.exec(&program, &mut shell).unwrap();
