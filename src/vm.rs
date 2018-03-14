@@ -795,14 +795,14 @@ impl VM {
     }
 
     /// Calls the function at the given address
-    fn call(&mut self, addr: Address) {
+    pub fn call(&mut self, addr: Address) {
         let call = self.pc;
         self.call_stack.push_front(call);
         self.pc = addr;
     }
 
     /// Returns from a function call
-    fn ret(&mut self) -> Result<()> {
+    pub fn ret(&mut self) -> Result<()> {
         let return_addr = self.call_stack
             .pop_front()
             .ok_or(format_err!("cannot return from an empty call stack"))?;
