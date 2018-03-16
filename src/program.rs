@@ -24,8 +24,8 @@ use typedef::*;
 pub struct Program {
     /// The version of the VM API
     pub core_version: String,
-    /// The ID of the Shell the program is compiled against
-    pub shell_id: String,
+    /// The ID of the System the program is compiled against
+    pub system_id: String,
     /// The instuctions of the program
     pub instructions: Vec<Instruction>,
     /// (Optional) The number of allocated memory pages (1 page = 1024 Byte)

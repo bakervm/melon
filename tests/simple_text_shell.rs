@@ -18,7 +18,7 @@
 
 extern crate melon;
 
-use melon::{Program, Shell, VM};
+use melon::{Program, System, VM};
 
 struct TextConsole {
     _current_line: String,
@@ -32,7 +32,7 @@ impl TextConsole {
     }
 }
 
-impl Shell for TextConsole {
+impl System for TextConsole {
     const ID: &'static str = "__TEXT_CONSOLE__";
 }
 
@@ -42,7 +42,7 @@ fn create() {
     virt.exec(
         &Program {
             core_version: env!("CARGO_PKG_VERSION").into(),
-            shell_id: TextConsole::ID.into(),
+            system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
             num_pages: Some(20),
         },
@@ -52,13 +52,13 @@ fn create() {
 
 #[test]
 #[should_panic]
-fn wrong_shell_id() {
+fn wrong_system_id() {
     let mut virt = VM::default();
 
     virt.exec(
         &Program {
             core_version: env!("CARGO_PKG_VERSION").into(),
-            shell_id: "__PIXEL_DISPLAY__".into(),
+            system_id: "__PIXEL_DISPLAY__".into(),
             instructions: Vec::new(),
             num_pages: Some(20),
         },
@@ -74,7 +74,7 @@ fn wrong_core_version() {
     virt.exec(
         &Program {
             core_version: "0.0.0".into(),
-            shell_id: TextConsole::ID.into(),
+            system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
             num_pages: Some(20),
         },
