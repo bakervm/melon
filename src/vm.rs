@@ -876,7 +876,7 @@ mod tests {
         }
 
         impl System for BogusSystem {
-            const ID: &'static str = "__BOGUS_SHELL__";
+            const ID: &'static str = "__BOGUS_SYSTEM__";
         }
 
         pub fn generate_system() -> BogusSystem {
