@@ -19,7 +19,7 @@
 use typedef::*;
 use instruction::{Instruction, IntegerType, Register};
 use program::Program;
-use shell::Shell;
+use system::System;
 use byteorder::{BigEndian, ByteOrder};
 use std::collections::LinkedList;
 
@@ -53,9 +53,9 @@ pub struct VM {
 }
 
 impl VM {
-    /// Executes the given program using the given shell and returns the program's exit status
-    pub fn exec<T: Shell>(&mut self, program: &Program, shell: &mut T) -> Result<SmallUInt> {
-        ensure!(program.shell_id == T::ID, "wrong shell ID");
+    /// Executes the given program using the given system and returns the program's exit status
+    pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<SmallUInt> {
+        ensure!(program.system_id == T::ID, "wrong system ID");
 
         ensure!(
             program.core_version == env!("CARGO_PKG_VERSION"),
@@ -70,15 +70,15 @@ impl VM {
 
         self.reset(&program)?;
 
-        shell.prepare(self)?;
+        system.prepare(self)?;
 
         while (self.pc < self.program.len() as Address) && !self.halted {
-            self.do_cycle(shell)?;
+            self.do_cycle(system)?;
 
-            shell.process(self)?;
+            system.process(self)?;
         }
 
-        shell.finish(self)?;
+        system.finish(self)?;
 
         Ok(self.return_value)
     }
@@ -116,10 +116,10 @@ impl VM {
     }
 
     /// Consume and execute a single instruction
-    fn handle_instruction<T: Shell>(
+    fn handle_instruction<T: System>(
         &mut self,
         instruction: Instruction,
-        shell: &mut T,
+        system: &mut T,
     ) -> Result<()> {
         match instruction {
             Instruction::Add(ty) => self.add(ty)?,
@@ -151,8 +151,8 @@ impl VM {
             Instruction::StoreIndirect(ty) => self.store_indirect(ty)?,
             Instruction::Dup(ty) => self.dup(ty)?,
             Instruction::Drop(ty) => self.drop(ty)?,
-            Instruction::Int(0) => self.halt(),
-            Instruction::Int(signal) => shell.int(self, signal)?,
+            Instruction::SysCall(0) => self.halt(),
+            Instruction::SysCall(signal) => system.system_call(self, signal)?,
             Instruction::Call(addr) => self.call(addr),
             Instruction::Ret => self.ret()?,
             Instruction::Jmp(int) => self.jmp(int)?,
@@ -166,12 +166,12 @@ impl VM {
     }
 
     /// Runs one execution cycle
-    fn do_cycle<T: Shell>(&mut self, shell: &mut T) -> Result<()> {
+    fn do_cycle<T: System>(&mut self, system: &mut T) -> Result<()> {
         let current_instruction = self.current_instruction()?;
 
         self.advance_pc();
 
-        self.handle_instruction(current_instruction, shell)?;
+        self.handle_instruction(current_instruction, system)?;
 
         Ok(())
     }
@@ -868,25 +868,25 @@ mod tests {
     mod helper {
         use program::Program;
         use instruction::{Instruction, IntegerType, Register};
-        use shell::Shell;
+        use system::System;
 
         #[derive(Default)]
-        pub struct BogusShell {
+        pub struct BogusSystem {
             _data: [u8; 8],
         }
 
-        impl Shell for BogusShell {
+        impl System for BogusSystem {
             const ID: &'static str = "__BOGUS_SHELL__";
         }
 
-        pub fn generate_shell() -> BogusShell {
+        pub fn generate_system() -> BogusSystem {
             Default::default()
         }
 
         pub fn generate_program() -> Program {
             Program {
                 core_version: env!("CARGO_PKG_VERSION").to_owned(),
-                shell_id: BogusShell::ID.to_owned(),
+                system_id: BogusSystem::ID.to_owned(),
                 instructions: generate_instructions(),
                 num_pages: Some(63),
             }
@@ -907,7 +907,7 @@ mod tests {
                 Instruction::Load(IntegerType::U16, 0xACBD),
                 Instruction::Load(IntegerType::I8, 0xBACD),
                 Instruction::Load(IntegerType::I16, 0xABDC),
-                Instruction::Int(123),
+                Instruction::SysCall(123),
             ]
         }
     }
@@ -1003,11 +1003,11 @@ mod tests {
 
     #[test]
     fn simple_execution() {
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let program = helper::generate_program();
 
         let mut vm = VM::default();
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
     }
 
     #[test]
@@ -1021,36 +1021,36 @@ mod tests {
 
     #[test]
     fn pc_out_of_bounds() {
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let program = helper::generate_program();
 
         let mut vm = VM::default();
         vm.pc = (program.instructions.len() + 20) as Address;
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
     }
 
     #[test]
     fn int_exec() {
         for i in 0..300 {
-            let mut shell = helper::generate_shell();
+            let mut system = helper::generate_system();
             let mut program = helper::generate_program();
-            program.instructions = vec![Instruction::Int(i)];
+            program.instructions = vec![Instruction::SysCall(i)];
 
             let mut vm = VM::default();
-            vm.exec(&program, &mut shell).unwrap();
+            vm.exec(&program, &mut system).unwrap();
         }
     }
 
     #[test]
     #[should_panic]
     fn mem_too_small() {
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
         program.num_pages = Some(1);
 
         let mut vm = VM::default();
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
     }
 
     #[test]
@@ -1070,12 +1070,12 @@ mod tests {
             Instruction::Load(IntegerType::I16, 0xABDC),
         ];
 
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
         program.instructions = instr;
 
         let mut vm = VM::default();
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 4);
         assert_eq!(vm.pop_i8().unwrap(), 3);
@@ -1086,7 +1086,7 @@ mod tests {
     #[test]
     fn add_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1095,7 +1095,7 @@ mod tests {
             Instruction::Add(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 100);
 
@@ -1105,7 +1105,7 @@ mod tests {
             Instruction::Add(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 3500);
 
@@ -1115,7 +1115,7 @@ mod tests {
             Instruction::Add(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 30);
 
@@ -1125,7 +1125,7 @@ mod tests {
             Instruction::Add(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 1050);
     }
@@ -1133,7 +1133,7 @@ mod tests {
     #[test]
     fn sub_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1142,7 +1142,7 @@ mod tests {
             Instruction::Sub(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 50);
 
@@ -1152,7 +1152,7 @@ mod tests {
             Instruction::Sub(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 1500);
 
@@ -1162,7 +1162,7 @@ mod tests {
             Instruction::Sub(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -50);
 
@@ -1172,7 +1172,7 @@ mod tests {
             Instruction::Sub(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), -950);
     }
@@ -1180,7 +1180,7 @@ mod tests {
     #[test]
     fn mul_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1189,7 +1189,7 @@ mod tests {
             Instruction::Mul(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 64);
 
@@ -1199,7 +1199,7 @@ mod tests {
             Instruction::Mul(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 22500);
 
@@ -1209,7 +1209,7 @@ mod tests {
             Instruction::Mul(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -52);
 
@@ -1219,7 +1219,7 @@ mod tests {
             Instruction::Mul(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), -5000);
     }
@@ -1227,7 +1227,7 @@ mod tests {
     #[test]
     fn div_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1236,7 +1236,7 @@ mod tests {
             Instruction::Div(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 2);
 
@@ -1246,7 +1246,7 @@ mod tests {
             Instruction::Div(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 3);
 
@@ -1256,7 +1256,7 @@ mod tests {
             Instruction::Div(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -3);
 
@@ -1266,7 +1266,7 @@ mod tests {
             Instruction::Div(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), -20);
     }
@@ -1274,7 +1274,7 @@ mod tests {
     #[test]
     fn shr_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1283,7 +1283,7 @@ mod tests {
             Instruction::Shr(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 1);
 
@@ -1293,7 +1293,7 @@ mod tests {
             Instruction::Shr(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 8);
 
@@ -1303,7 +1303,7 @@ mod tests {
             Instruction::Shr(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 8);
 
@@ -1313,7 +1313,7 @@ mod tests {
             Instruction::Shr(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 8);
     }
@@ -1321,7 +1321,7 @@ mod tests {
     #[test]
     fn shl_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1330,7 +1330,7 @@ mod tests {
             Instruction::Shl(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 16);
 
@@ -1340,7 +1340,7 @@ mod tests {
             Instruction::Shl(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 256);
 
@@ -1350,7 +1350,7 @@ mod tests {
             Instruction::Shl(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 8);
 
@@ -1360,7 +1360,7 @@ mod tests {
             Instruction::Shl(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 4);
     }
@@ -1368,7 +1368,7 @@ mod tests {
     #[test]
     fn and_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1377,7 +1377,7 @@ mod tests {
             Instruction::And(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0b01010101);
 
@@ -1387,7 +1387,7 @@ mod tests {
             Instruction::And(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0b1010101010101010);
 
@@ -1397,7 +1397,7 @@ mod tests {
             Instruction::And(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 0b0101);
 
@@ -1407,7 +1407,7 @@ mod tests {
             Instruction::And(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 0b01010101);
     }
@@ -1415,7 +1415,7 @@ mod tests {
     #[test]
     fn or_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1424,7 +1424,7 @@ mod tests {
             Instruction::Or(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xFF);
 
@@ -1434,7 +1434,7 @@ mod tests {
             Instruction::Or(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0xFFFF);
 
@@ -1444,7 +1444,7 @@ mod tests {
             Instruction::Or(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 0x0F);
 
@@ -1454,7 +1454,7 @@ mod tests {
             Instruction::Or(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 0x00FF);
     }
@@ -1462,7 +1462,7 @@ mod tests {
     #[test]
     fn xor_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1471,7 +1471,7 @@ mod tests {
             Instruction::Xor(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xFF);
 
@@ -1481,7 +1481,7 @@ mod tests {
             Instruction::Xor(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0xFFFF);
 
@@ -1491,7 +1491,7 @@ mod tests {
             Instruction::Xor(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 0x0F);
 
@@ -1501,7 +1501,7 @@ mod tests {
             Instruction::Xor(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 0x00FF);
     }
@@ -1509,7 +1509,7 @@ mod tests {
     #[test]
     fn not_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1517,7 +1517,7 @@ mod tests {
             Instruction::Not(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xF0);
 
@@ -1526,7 +1526,7 @@ mod tests {
             Instruction::Not(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0x00FF);
 
@@ -1535,7 +1535,7 @@ mod tests {
             Instruction::Not(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xF0);
 
@@ -1544,7 +1544,7 @@ mod tests {
             Instruction::Not(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0xFF00);
     }
@@ -1552,7 +1552,7 @@ mod tests {
     #[test]
     fn neg_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1560,7 +1560,7 @@ mod tests {
             Instruction::Neg(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -104);
 
@@ -1569,23 +1569,23 @@ mod tests {
             Instruction::Neg(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 1234);
 
         program.instructions = vec![Instruction::Neg(IntegerType::U8)];
 
-        assert!(vm.exec(&program, &mut shell).is_err());
+        assert!(vm.exec(&program, &mut system).is_err());
 
         program.instructions = vec![Instruction::Neg(IntegerType::U16)];
 
-        assert!(vm.exec(&program, &mut shell).is_err());
+        assert!(vm.exec(&program, &mut system).is_err());
     }
 
     #[test]
     fn cmp_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1594,7 +1594,7 @@ mod tests {
             Instruction::Cmp(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.cmp_res, 6);
         assert_eq!(vm.pop_u8().unwrap(), 98);
@@ -1606,7 +1606,7 @@ mod tests {
             Instruction::Cmp(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.cmp_res, 0);
         assert_eq!(vm.pop_u16().unwrap(), 20000);
@@ -1618,7 +1618,7 @@ mod tests {
             Instruction::Cmp(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.cmp_res, 32);
         assert_eq!(vm.pop_i8().unwrap(), -64);
@@ -1630,7 +1630,7 @@ mod tests {
             Instruction::Cmp(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.cmp_res, 3200);
         assert_eq!(vm.pop_i16().unwrap(), -6400);
@@ -1640,7 +1640,7 @@ mod tests {
     #[test]
     fn inc_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1651,7 +1651,7 @@ mod tests {
             Instruction::Inc(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 104);
 
@@ -1664,7 +1664,7 @@ mod tests {
             Instruction::Inc(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 20005);
 
@@ -1688,7 +1688,7 @@ mod tests {
             Instruction::Inc(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -16);
 
@@ -1700,7 +1700,7 @@ mod tests {
             Instruction::Inc(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 0);
     }
@@ -1708,7 +1708,7 @@ mod tests {
     #[test]
     fn dec_instruction() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1719,7 +1719,7 @@ mod tests {
             Instruction::Dec(IntegerType::U8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 96);
 
@@ -1732,7 +1732,7 @@ mod tests {
             Instruction::Dec(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 19995);
 
@@ -1756,7 +1756,7 @@ mod tests {
             Instruction::Dec(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 16);
 
@@ -1768,7 +1768,7 @@ mod tests {
             Instruction::Dec(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 0);
     }
@@ -1776,30 +1776,30 @@ mod tests {
     #[test]
     fn promotion_demotion() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![Instruction::PushConstU8(90), Instruction::U8Promote];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_u16().unwrap(), 90);
 
         program.instructions = vec![Instruction::PushConstU16(190), Instruction::U16Demote];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_u8().unwrap(), 190);
 
         program.instructions = vec![Instruction::PushConstI8(-90), Instruction::I8Promote];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_i16().unwrap(), -90);
 
         program.instructions = vec![Instruction::PushConstI16(-120), Instruction::I16Demote];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_i8().unwrap(), -120);
     }
 
     #[test]
     fn jumps() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1812,7 +1812,7 @@ mod tests {
             Instruction::Jmp(-5),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
             Instruction::Jmp(1),
@@ -1821,7 +1821,7 @@ mod tests {
             Instruction::Cmp(IntegerType::U8),
             Instruction::Jp(1),
         ];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
             Instruction::Jmp(1),
@@ -1830,7 +1830,7 @@ mod tests {
             Instruction::Cmp(IntegerType::I8),
             Instruction::Jn(1),
         ];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
             Instruction::Jmp(1),
@@ -1839,7 +1839,7 @@ mod tests {
             Instruction::Cmp(IntegerType::U8),
             Instruction::Jz(1),
         ];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
             Instruction::Jmp(1),
@@ -1848,13 +1848,13 @@ mod tests {
             Instruction::Cmp(IntegerType::U8),
             Instruction::Jnz(1),
         ];
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
     }
 
     #[test]
     fn indirect_addr() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1867,7 +1867,7 @@ mod tests {
             Instruction::LoadIndirect(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), -1234);
     }
@@ -1875,7 +1875,7 @@ mod tests {
     #[test]
     fn dup_drop() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
@@ -1887,7 +1887,7 @@ mod tests {
             Instruction::Dup(IntegerType::I16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), -1234);
         assert_eq!(vm.pop_i16().unwrap(), -1234);
@@ -1901,7 +1901,7 @@ mod tests {
             Instruction::Dup(IntegerType::I8),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -120);
         assert_eq!(vm.pop_i8().unwrap(), -120);
@@ -1910,12 +1910,12 @@ mod tests {
     #[test]
     fn missing_call_for_ret() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![Instruction::Ret];
 
-        let err = vm.exec(&program, &mut shell).err().unwrap();
+        let err = vm.exec(&program, &mut system).err().unwrap();
         let formatted_err = format!("{}", err);
 
         assert_eq!(formatted_err, "cannot return from an empty call stack");
@@ -1924,12 +1924,12 @@ mod tests {
     #[test]
     fn regular_call() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
         program.instructions = vec![
             Instruction::Call(0x0002),
-            Instruction::Int(0),
+            Instruction::SysCall(0),
             Instruction::PushConstI16(1234),
             Instruction::PushConstI16(1234),
             Instruction::Sub(IntegerType::I16),
@@ -1937,25 +1937,25 @@ mod tests {
             Instruction::Ret,
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn pop_empty_stack() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
         program.instructions = vec![Instruction::Drop(IntegerType::U8)];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn pop_corrupted_stack() {
         let mut vm = VM::default();
-        let mut shell = helper::generate_shell();
+        let mut system = helper::generate_system();
         let mut program = helper::generate_program();
         program.instructions = vec![
             Instruction::PushConstU16(0xAABB),
@@ -1963,6 +1963,6 @@ mod tests {
             Instruction::Drop(IntegerType::U16),
         ];
 
-        vm.exec(&program, &mut shell).unwrap();
+        vm.exec(&program, &mut system).unwrap();
     }
 }

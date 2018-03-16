@@ -21,8 +21,8 @@ use typedef::*;
 
 #[allow(unused_variables)]
 /// An interface to communicate with the VM
-pub trait Shell: Send {
-    /// A unique ID to identify the Shell
+pub trait System: Send {
+    /// A unique ID to identify the System
     const ID: &'static str;
 
     /// Hook into the state after each cycle
@@ -40,8 +40,8 @@ pub trait Shell: Send {
         Ok(())
     }
 
-    /// React to the `Int` instruction and process the given signal
-    fn int(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
+    /// React to the `SysCall` instruction and process the given signal
+    fn system_call(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
         Ok(())
     }
 }

@@ -57,7 +57,7 @@ pub enum Instruction {
     Dup(IntegerType),
     Drop(IntegerType),
 
-    Int(UInt),
+    SysCall(UInt),
 
     Call(Address),
     Ret,
