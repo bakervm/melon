@@ -10,7 +10,7 @@ A library for creating retro computing platforms
 ## Introduction
 `melon` is like a virtual 16bit CPU. When building a retro computing platform e.g. a gaming console or old computer architecture, `melon` takes care of handling basic parts like stack management, calls or exception handling. Its most common interface, the `System` trait makes it possible to not only implement the CPU into any platform but makes it also really easy to extend the functionality of `melon`.
 
-If you have any questions do not hesitate joining me on Freenode #bakervm. I try to be online as often as possible
+If you have any questions do not hesitate joining me on *Freenode* in `#bakervm`. I try to be online as often as possible :grin:
 
 [deps-image]:https://deps.rs/repo/github/bakervm/melon/status.svg
 [deps-link]: https://deps.rs/repo/github/bakervm/melon
