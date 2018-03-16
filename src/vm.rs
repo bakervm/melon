@@ -42,7 +42,7 @@ pub struct VM {
     /// The stack pointer
     sp: Address,
     /// The memory allocated and used by the VM
-    mem: Vec<SmallUInt>,
+    pub mem: Vec<SmallUInt>,
     /// The return value of the VM
     pub return_value: SmallUInt,
     /// The stack of calls (return addresses)
