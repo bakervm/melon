@@ -27,9 +27,12 @@ use typedef::*;
 /// If you wanted to implement a text based system you could write something like this:
 ///
 /// ```
-/// use melon::{Shell, VM};
+/// extern crate melon;
+///
 /// use melon::typedef::*;
+/// use melon::{System, VM};
 /// use std::sync::mpsc::Receiver;
+///
 ///
 /// pub const MAX_CHARACTERS_PER_LINE: usize = 100;
 ///
@@ -38,6 +41,8 @@ use typedef::*;
 ///     current_input_line: String,
 ///     recv: Receiver<u8>,
 /// }
+///
+/// # fn main() {}
 ///
 /// impl TextSystem {
 ///     /// The receiver allows you to safely inject characters from another thread
@@ -50,10 +55,10 @@ use typedef::*;
 ///     }
 /// }
 ///
-/// impl Shell for TextSystem {
+/// impl System for TextSystem {
 ///     const ID: &'static str = "__TEXT_SYSTEM__";
 ///
-///     fn int(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
+///     fn system_call(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
 ///         match signal {
 ///             // This is pretty much like `write_line`
 ///             1 => {
