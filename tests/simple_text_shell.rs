@@ -44,7 +44,7 @@ fn create() {
             core_version: env!("CARGO_PKG_VERSION").into(),
             system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
-            num_pages: Some(20),
+            mem_pages: Some(20),
         },
         &mut TextConsole::new(),
     ).unwrap();
@@ -60,7 +60,7 @@ fn wrong_system_id() {
             core_version: env!("CARGO_PKG_VERSION").into(),
             system_id: "__PIXEL_DISPLAY__".into(),
             instructions: Vec::new(),
-            num_pages: Some(20),
+            mem_pages: Some(20),
         },
         &mut TextConsole::new(),
     ).unwrap();
@@ -76,7 +76,7 @@ fn wrong_core_version() {
             core_version: "0.0.0".into(),
             system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
-            num_pages: Some(20),
+            mem_pages: Some(20),
         },
         &mut TextConsole::new(),
     ).unwrap();

@@ -62,10 +62,10 @@ impl VM {
             "wrong core version"
         );
 
-        if let Some(num_pages) = program.num_pages {
-            ensure!(num_pages <= MAX_MEM_PAGE_COUNT, "requested memory too big");
+        if let Some(mem_pages) = program.mem_pages {
+            ensure!(mem_pages <= MAX_MEM_PAGE_COUNT, "requested memory too big");
 
-            ensure!(num_pages > 0, "requested memory too small");
+            ensure!(mem_pages > 0, "requested memory too small");
         }
 
         self.reset(&program)?;
@@ -87,7 +87,7 @@ impl VM {
     fn reset(&mut self, program: &Program) -> Result<()> {
         *self = Default::default();
 
-        let mem_size = program.num_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
+        let mem_size = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
 
         ensure!(
             self.program.len() < mem_size as usize,
@@ -876,7 +876,7 @@ mod tests {
         }
 
         impl System for BogusSystem {
-            const ID: &'static str = "__BOGUS_SHELL__";
+            const ID: &'static str = "__BOGUS_SYSTEM__";
         }
 
         pub fn generate_system() -> BogusSystem {
@@ -888,7 +888,7 @@ mod tests {
                 core_version: env!("CARGO_PKG_VERSION").to_owned(),
                 system_id: BogusSystem::ID.to_owned(),
                 instructions: generate_instructions(),
-                num_pages: Some(63),
+                mem_pages: Some(63),
             }
         }
 
@@ -1047,7 +1047,7 @@ mod tests {
     fn mem_too_small() {
         let mut system = helper::generate_system();
         let mut program = helper::generate_program();
-        program.num_pages = Some(1);
+        program.mem_pages = Some(1);
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
