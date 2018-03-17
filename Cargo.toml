@@ -13,3 +13,10 @@ failure = "0.1"
 serde = "1"
 serde_derive = "1"
 rand = "0.4"
+
+[package.metadata.release]
+tag-prefix = "v"
+tag-message = "released version {{version}}"
+pre-release-commit-message = "Release {{version}} 🎉🎉"
+pre-release-hook = [ "cargo", "test" ]
+no-dev-version = true
