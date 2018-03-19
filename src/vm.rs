@@ -1075,6 +1075,17 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn mem_too_big() {
+        let mut system = helper::generate_system();
+        let mut program = helper::generate_program();
+        program.mem_pages = Some(MAX_MEM_PAGE_COUNT + 1);
+
+        let mut vm = VM::default();
+        vm.exec(&program, &mut system).unwrap();
+    }
+
+    #[test]
     fn push_load_store() {
         let instr = vec![
             Instruction::PushConstU8(1),
