@@ -106,14 +106,14 @@ impl VM {
         let mem_size = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
 
         ensure!(
-            self.program.len() < UInt::max_value() as usize,
+            program.instructions.len() < UInt::max_value() as usize,
             "program has too many instructions. Maximum instructions: {}",
             UInt::max_value() - 1
         );
 
+        self.program = program.instructions.clone();
         self.mem = vec![0; mem_size as usize];
         self.sp = (mem_size - 1) as Address;
-        self.program = program.instructions.clone();
 
         Ok(())
     }
@@ -1080,6 +1080,18 @@ mod tests {
         let mut system = helper::generate_system();
         let mut program = helper::generate_program();
         program.mem_pages = Some(MAX_MEM_PAGE_COUNT + 1);
+
+        let mut vm = VM::default();
+        vm.exec(&program, &mut system).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn program_too_big() {
+        let mut system = helper::generate_system();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![Instruction::SysCall(123); (UInt::max_value() as usize) + 2];
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
