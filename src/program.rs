@@ -16,8 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::io::{Read, Write};
+use std::fs::File;
+use std::path::Path;
 use instruction::Instruction;
 use typedef::*;
+use serde::{Deserialize, Serialize};
+use rmps::{Deserializer, Serializer};
 
 /// The container for a program
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -30,4 +35,59 @@ pub struct Program {
     pub instructions: Vec<Instruction>,
     /// (Optional) The number of allocated memory pages (1 page = 1024 Byte)
     pub mem_pages: Option<Address>,
+}
+
+impl Program {
+    /// Loads a MsgPack encoded melon image from the given file
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Program> {
+        let mut file = File::open(path)?;
+
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        let mut de = Deserializer::new(&buf[..]);
+
+        let res = Deserialize::deserialize(&mut de)?;
+
+        Ok(res)
+    }
+
+    /// Saves the program to the given MsgPack encoded image file
+    pub fn save_as<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut buf = Vec::new();
+        self.serialize(&mut Serializer::new(&mut buf))?;
+
+        let mut file = File::create(path)?;
+        file.write_all(&buf[..])?;
+        file.flush()?;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn save_and_load() {
+        const FILE_NAME: &str = "test.img";
+
+        let program = Program {
+            core_version: "bogus_version".into(),
+            system_id: "bogus_system".into(),
+            instructions: Default::default(),
+            mem_pages: Some(1),
+        };
+
+        program.save_as(FILE_NAME).unwrap();
+
+        let loaded_program = Program::from_file(FILE_NAME).unwrap();
+
+        fs::remove_file(FILE_NAME).unwrap();
+
+        assert_eq!(program.core_version, loaded_program.core_version);
+        assert_eq!(program.system_id, loaded_program.system_id);
+        assert_eq!(program.mem_pages, loaded_program.mem_pages);
+    }
 }
