@@ -22,14 +22,15 @@ use program::Program;
 use system::System;
 use byteorder::{BigEndian, ByteOrder};
 use std::collections::LinkedList;
+use failure::ResultExt;
 
 type Endianess = BigEndian;
 
-/// A constant used to calulate the actually used memory of the VM
+/// The size of a memory page in bytes
 pub const MEM_PAGE: Address = 1024;
-/// A constant defining the default memory size of the VM
+/// The default number of pages allocated by the VM
 const DEFAULT_MEM_PAGE_COUNT: Address = 32;
-/// A constant defining the maximum memory size of the VM
+/// The maimum number of pages that can be allocated by the VM
 const MAX_MEM_PAGE_COUNT: Address = 64;
 
 /// The state of the VM
@@ -55,17 +56,32 @@ pub struct VM {
 impl VM {
     /// Executes the given program using the given system and returns the program's exit status
     pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<SmallUInt> {
-        ensure!(program.system_id == T::ID, "wrong system ID");
+        ensure!(
+            program.system_id == T::ID,
+            "wrong system ID. Runtime: {:?} Program: {:?}",
+            T::ID,
+            program.system_id
+        );
 
         ensure!(
             program.core_version == env!("CARGO_PKG_VERSION"),
-            "wrong core version"
+            "wrong core version. Runtime: {:?} Program: {:?}",
+            env!("CARGO_PKG_VERSION"),
+            program.core_version
         );
 
         if let Some(mem_pages) = program.mem_pages {
-            ensure!(mem_pages <= MAX_MEM_PAGE_COUNT, "requested memory too big");
+            ensure!(
+                mem_pages <= MAX_MEM_PAGE_COUNT,
+                "requested memory too big. Requested pages: {} Maximum number of pages: {}",
+                mem_pages,
+                MAX_MEM_PAGE_COUNT
+            );
 
-            ensure!(mem_pages > 0, "requested memory too small");
+            ensure!(
+                mem_pages > 0,
+                "requested memory too small. Number of memory pages can't be less than one"
+            );
         }
 
         self.reset(&program)?;
@@ -90,13 +106,14 @@ impl VM {
         let mem_size = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
 
         ensure!(
-            self.program.len() < mem_size as usize,
-            "program memory too big"
+            program.instructions.len() < UInt::max_value() as usize,
+            "program has too many instructions. Maximum instructions: {}",
+            UInt::max_value() - 1
         );
 
+        self.program = program.instructions.clone();
         self.mem = vec![0; mem_size as usize];
         self.sp = (mem_size - 1) as Address;
-        self.program = program.instructions.clone();
 
         Ok(())
     }
@@ -233,7 +250,8 @@ impl VM {
     pub fn pop_u8(&mut self) -> Result<SmallUInt> {
         let addr = self.sp;
 
-        let value = self.read_u8(addr)?;
+        let value = self.read_u8(addr)
+            .context("cannot pop a value off an empty stack")?;
 
         self.sp += 1;
 
@@ -244,7 +262,8 @@ impl VM {
     pub fn pop_u16(&mut self) -> Result<UInt> {
         let addr = self.sp;
 
-        let value = self.read_u16(addr)?;
+        let value = self.read_u16(addr)
+            .context("cannot pop a value off an empty stack")?;
 
         self.sp += 2;
 
@@ -255,7 +274,8 @@ impl VM {
     pub fn pop_i8(&mut self) -> Result<SmallInt> {
         let addr = self.sp;
 
-        let value = self.read_u8(addr)?;
+        let value = self.read_u8(addr)
+            .context("cannot pop a value off an empty stack")?;
 
         self.sp += 1;
 
@@ -266,7 +286,8 @@ impl VM {
     pub fn pop_i16(&mut self) -> Result<Int> {
         let addr = self.sp;
 
-        let value = self.read_u16(addr)?;
+        let value = self.read_u16(addr)
+            .context("cannot pop a value off an empty stack")?;
 
         self.sp += 2;
 
@@ -1048,6 +1069,29 @@ mod tests {
         let mut system = helper::generate_system();
         let mut program = helper::generate_program();
         program.mem_pages = Some(1);
+
+        let mut vm = VM::default();
+        vm.exec(&program, &mut system).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn mem_too_big() {
+        let mut system = helper::generate_system();
+        let mut program = helper::generate_program();
+        program.mem_pages = Some(MAX_MEM_PAGE_COUNT + 1);
+
+        let mut vm = VM::default();
+        vm.exec(&program, &mut system).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn program_too_big() {
+        let mut system = helper::generate_system();
+        let mut program = helper::generate_program();
+
+        program.instructions = vec![Instruction::SysCall(123); (UInt::max_value() as usize) + 2];
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
