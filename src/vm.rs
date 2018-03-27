@@ -117,7 +117,7 @@ impl VM {
 
         self.program = program.instructions.clone();
         self.mem = vec![0; mem_size as usize];
-        self.sp = (mem_size - 1) as Address;
+        self.sp = (self.mem.len() - 1) as Address;
 
         Ok(())
     }
