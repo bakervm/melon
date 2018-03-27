@@ -86,7 +86,7 @@ mod tests {
     fn save_and_load() {
         let mut rng = rand::thread_rng();
 
-        const FILE_NAME: &str = "test.img";
+        let file_name = format!("test.{}", ROM_FILE_EXTENSION);
 
         let program = Program {
             core_version: "bogus_version".into(),
@@ -95,11 +95,11 @@ mod tests {
             mem_pages: Some(1),
         };
 
-        program.save_as(FILE_NAME).unwrap();
+        program.save_as(file_name).unwrap();
 
-        let loaded_program = Program::from_file(FILE_NAME).unwrap();
+        let loaded_program = Program::from_file(file_name).unwrap();
 
-        fs::remove_file(FILE_NAME).unwrap();
+        fs::remove_file(file_name).unwrap();
 
         assert_eq!(program.core_version, loaded_program.core_version);
         assert_eq!(program.system_id, loaded_program.system_id);
