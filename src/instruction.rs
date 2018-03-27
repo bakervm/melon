@@ -62,6 +62,9 @@ pub enum Instruction {
     Call(Address),
     Ret,
 
+    Alloc(UInt),
+    Free,
+
     Jmp(Address),
     Jnz(Address),
     Jz(Address),

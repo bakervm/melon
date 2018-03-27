@@ -50,6 +50,8 @@ pub struct VM {
     pub return_value: SmallUInt,
     /// The stack of calls (return addresses)
     call_stack: LinkedList<Address>,
+    /// The stack of previous allocations
+    alloc_stack: LinkedList<UInt>,
     /// The Result of the last comparison
     cmp_res: i32,
     halted: bool,
@@ -174,6 +176,8 @@ impl VM {
             Instruction::SysCall(signal) => system.system_call(self, signal)?,
             Instruction::Call(addr) => self.call(addr),
             Instruction::Ret => self.ret()?,
+            Instruction::Alloc(amount) => self.alloc(amount),
+            Instruction::Free => self.free()?,
             Instruction::Jmp(addr) => self.jmp(addr)?,
             Instruction::Jnz(addr) => self.jnz(addr)?,
             Instruction::Jz(addr) => self.jz(addr)?,
@@ -832,6 +836,23 @@ impl VM {
             .ok_or(format_err!("cannot return from an empty call stack"))?;
 
         self.pc = return_addr;
+
+        Ok(())
+    }
+
+    /// Allocates the given number of bytes in the heap
+    fn alloc(&mut self, amount: UInt) {
+        self.alloc_stack.push_front(amount);
+        self.bp += amount;
+    }
+
+    /// Undos the last allocation and frees the memory
+    fn free(&mut self) -> Result<()> {
+        let amount = self.alloc_stack
+            .pop_front()
+            .ok_or(format_err!("cannot free unallocated memory"))?;
+
+        self.bp -= amount;
 
         Ok(())
     }
