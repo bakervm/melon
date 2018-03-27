@@ -95,11 +95,11 @@ mod tests {
             mem_pages: Some(1),
         };
 
-        program.save_as(file_name).unwrap();
+        program.save_as(file_name.clone()).unwrap();
 
-        let loaded_program = Program::from_file(file_name).unwrap();
+        let loaded_program = Program::from_file(file_name.clone()).unwrap();
 
-        fs::remove_file(file_name).unwrap();
+        fs::remove_file(file_name.clone()).unwrap();
 
         assert_eq!(program.core_version, loaded_program.core_version);
         assert_eq!(program.system_id, loaded_program.system_id);
