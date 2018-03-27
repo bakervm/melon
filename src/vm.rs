@@ -16,13 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use typedef::*;
+use byteorder::{BigEndian, ByteOrder};
+use failure::ResultExt;
 use instruction::{Instruction, IntegerType, Register};
 use program::Program;
-use system::System;
-use byteorder::{BigEndian, ByteOrder};
 use std::collections::LinkedList;
-use failure::ResultExt;
+use system::System;
+use typedef::*;
 
 type Endianess = BigEndian;
 
@@ -42,6 +42,8 @@ pub struct VM {
     program: Vec<Instruction>,
     /// The stack pointer
     sp: Address,
+    /// The base pointer
+    bp: Address,
     /// The memory allocated and used by the VM
     pub mem: Vec<SmallUInt>,
     /// The return value of the VM
@@ -172,11 +174,11 @@ impl VM {
             Instruction::SysCall(signal) => system.system_call(self, signal)?,
             Instruction::Call(addr) => self.call(addr),
             Instruction::Ret => self.ret()?,
-            Instruction::Jmp(int) => self.jmp(int)?,
-            Instruction::Jnz(int) => self.jnz(int)?,
-            Instruction::Jz(int) => self.jz(int)?,
-            Instruction::Jn(int) => self.jn(int)?,
-            Instruction::Jp(int) => self.jp(int)?,
+            Instruction::Jmp(addr) => self.jmp(addr)?,
+            Instruction::Jnz(addr) => self.jnz(addr)?,
+            Instruction::Jz(addr) => self.jz(addr)?,
+            Instruction::Jn(addr) => self.jn(addr)?,
+            Instruction::Jp(addr) => self.jp(addr)?,
         }
 
         Ok(())
@@ -724,6 +726,7 @@ impl VM {
     pub fn load_reg(&mut self, reg: Register) -> Result<()> {
         let ptr = match reg {
             Register::StackPtr => self.sp,
+            Register::BasePtr => self.bp,
         };
 
         self.push_const_u16(ptr)
@@ -834,46 +837,47 @@ impl VM {
     }
 
     /// Jumps unconditionally in the given direction
-    pub fn jmp(&mut self, dir: Int) -> Result<()> {
-        ensure!(dir != 0, "relative jumps nowhere will hang the program");
-        // The (-1) is because the program counter has already been advanced
-        let addr = ((self.pc as Int) - 1) + dir;
-        self.pc = addr as Address;
+    pub fn jmp(&mut self, addr: Address) -> Result<()> {
+        ensure!(
+            addr != (self.pc - 1),
+            "jumps to nowhere will hang the program"
+        );
+        self.pc = addr;
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is not zero, in the given direction
-    pub fn jnz(&mut self, dir: Int) -> Result<()> {
+    pub fn jnz(&mut self, addr: Address) -> Result<()> {
         if self.cmp_res != 0 {
-            self.jmp(dir)?;
+            self.jmp(addr)?;
         }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is zero, in the given direction
-    pub fn jz(&mut self, dir: Int) -> Result<()> {
+    pub fn jz(&mut self, addr: Address) -> Result<()> {
         if self.cmp_res == 0 {
-            self.jmp(dir)?;
+            self.jmp(addr)?;
         }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is negative, in the given direction
-    pub fn jn(&mut self, dir: Int) -> Result<()> {
+    pub fn jn(&mut self, addr: Address) -> Result<()> {
         if self.cmp_res.is_negative() {
-            self.jmp(dir)?;
+            self.jmp(addr)?;
         }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is positive, in the given direction
-    pub fn jp(&mut self, dir: Int) -> Result<()> {
+    pub fn jp(&mut self, addr: Address) -> Result<()> {
         if self.cmp_res.is_positive() {
-            self.jmp(dir)?;
+            self.jmp(addr)?;
         }
 
         Ok(())
@@ -883,12 +887,12 @@ impl VM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{self, Rng};
     use instruction::{Instruction, IntegerType};
+    use rand::{self, Rng};
 
     mod helper {
-        use program::Program;
         use instruction::{Instruction, IntegerType, Register};
+        use program::Program;
         use system::System;
 
         #[derive(Default)]
@@ -1848,12 +1852,12 @@ mod tests {
 
         program.instructions = vec![
             Instruction::Jmp(6),
-            Instruction::Jp(1),
-            Instruction::Jn(1),
-            Instruction::Jz(1),
-            Instruction::Jnz(1),
-            Instruction::Jmp(2),
-            Instruction::Jmp(-5),
+            Instruction::Jp(2),
+            Instruction::Jn(3),
+            Instruction::Jz(4),
+            Instruction::Jnz(5),
+            Instruction::Jmp(6),
+            Instruction::Jmp(7),
         ];
 
         vm.exec(&program, &mut system).unwrap();
@@ -1863,7 +1867,7 @@ mod tests {
             Instruction::PushConstU8(2),
             Instruction::PushConstU8(1),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jp(1),
+            Instruction::Jp(100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
@@ -1872,7 +1876,7 @@ mod tests {
             Instruction::PushConstI8(1),
             Instruction::PushConstI8(2),
             Instruction::Cmp(IntegerType::I8),
-            Instruction::Jn(1),
+            Instruction::Jn(100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
@@ -1881,7 +1885,7 @@ mod tests {
             Instruction::PushConstU8(2),
             Instruction::PushConstU8(2),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jz(1),
+            Instruction::Jz(100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
@@ -1890,7 +1894,7 @@ mod tests {
             Instruction::PushConstU8(40),
             Instruction::PushConstU8(20),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jnz(1),
+            Instruction::Jnz(100),
         ];
         vm.exec(&program, &mut system).unwrap();
     }

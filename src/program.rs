@@ -16,13 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::io::{Read, Write};
-use std::fs::File;
-use std::path::Path;
+use flate2::Compression;
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
 use instruction::Instruction;
-use typedef::*;
-use serde::{Deserialize, Serialize};
 use rmps::{Deserializer, Serializer};
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::Path;
+use typedef::*;
 
 /// The container for a program
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -42,9 +45,14 @@ impl Program {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Program> {
         let mut file = File::open(path)?;
 
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        let mut de = Deserializer::new(&buf[..]);
+        let mut gz_buf = Vec::new();
+        file.read_to_end(&mut gz_buf)?;
+
+        let mut decoder = GzDecoder::new(&gz_buf[..]);
+        let mut msgpack_buf = Vec::new();
+        decoder.read_to_end(&mut msgpack_buf)?;
+
+        let mut de = Deserializer::new(&msgpack_buf[..]);
 
         let res = Deserialize::deserialize(&mut de)?;
 
@@ -53,11 +61,15 @@ impl Program {
 
     /// Saves the program to the given MsgPack encoded image file
     pub fn save_as<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let mut buf = Vec::new();
-        self.serialize(&mut Serializer::new(&mut buf))?;
+        let mut msgpack_buf = Vec::new();
+        self.serialize(&mut Serializer::new(&mut msgpack_buf))?;
+
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(&msgpack_buf[..])?;
+        let gz_buf = encoder.finish()?;
 
         let mut file = File::create(path)?;
-        file.write_all(&buf[..])?;
+        file.write_all(&gz_buf[..])?;
         file.flush()?;
 
         Ok(())
@@ -67,16 +79,19 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{self, Rng};
     use std::fs;
 
     #[test]
     fn save_and_load() {
+        let mut rng = rand::thread_rng();
+
         const FILE_NAME: &str = "test.img";
 
         let program = Program {
             core_version: "bogus_version".into(),
             system_id: "bogus_system".into(),
-            instructions: Default::default(),
+            instructions: rng.gen_iter().take(100).collect(),
             mem_pages: Some(1),
         };
 

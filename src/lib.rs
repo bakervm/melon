@@ -33,18 +33,21 @@ extern crate byteorder;
 #[macro_use]
 extern crate failure;
 extern crate rand;
+#[macro_use]
+extern crate rand_derive;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate flate2;
 extern crate rmp_serde as rmps;
 
 mod instruction;
-pub mod typedef;
-mod vm;
 mod program;
 mod system;
+pub mod typedef;
+mod vm;
 
 pub use instruction::*;
-pub use vm::*;
 pub use program::*;
 pub use system::*;
+pub use vm::*;
