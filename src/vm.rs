@@ -945,6 +945,7 @@ mod tests {
                 Instruction::PushConstI8(-120),
                 Instruction::PushConstI16(-32000),
                 Instruction::LoadReg(Register::StackPtr),
+                Instruction::LoadReg(Register::BasePtr),
                 Instruction::Store(IntegerType::U8, 0xABCD),
                 Instruction::Store(IntegerType::U16, 0xACBD),
                 Instruction::Store(IntegerType::I8, 0xBACD),
@@ -2033,5 +2034,24 @@ mod tests {
         ];
 
         vm.exec(&program, &mut system).unwrap();
+    }
+
+    #[test]
+    fn alloc_and_free() {
+        let mut vm = VM::default();
+        let mut system = helper::generate_system();
+        let mut program = helper::generate_program();
+        program.instructions = vec![
+            Instruction::Alloc(10),
+            Instruction::Alloc(30),
+            Instruction::Free,
+            Instruction::Free,
+            Instruction::Alloc(20),
+            Instruction::Free,
+        ];
+
+        vm.exec(&program, &mut system).unwrap();
+
+        assert_eq!(vm.bp, 0);
     }
 }
