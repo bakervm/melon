@@ -1,0 +1,5 @@
+tag-prefix = "v"
+tag-message = "released version {{version}}"
+pre-release-commit-message = "Release {{version}} 🎉🎉"
+pre-release-hook = [ "cargo", "test" ]
+no-dev-version = true

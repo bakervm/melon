@@ -20,7 +20,7 @@
 
 use typedef::*;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Rand)]
 pub enum Instruction {
     Add(IntegerType),
     Sub(IntegerType),
@@ -62,14 +62,17 @@ pub enum Instruction {
     Call(Address),
     Ret,
 
-    Jmp(Int),
-    Jnz(Int),
-    Jz(Int),
-    Jn(Int),
-    Jp(Int),
+    Alloc(UInt),
+    Free,
+
+    Jmp(Address),
+    Jnz(Address),
+    Jz(Address),
+    Jn(Address),
+    Jp(Address),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Rand)]
 pub enum IntegerType {
     U8,
     U16,
@@ -77,9 +80,10 @@ pub enum IntegerType {
     I16,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Rand)]
 pub enum Register {
     StackPtr,
+    BasePtr,
 }
 
 #[cfg(test)]

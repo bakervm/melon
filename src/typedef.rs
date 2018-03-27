@@ -33,3 +33,6 @@ pub type Address = u16;
 
 /// A handy alias for `Result` that carries a generic error type.
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
+
+/// The file extension for melon roms
+pub const ROM_FILE_EXTENSION: &str = "rom";
