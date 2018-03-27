@@ -15,8 +15,8 @@ matrix:
     - rust: nightly
 script:
 - cargo clean
-- cargo build --verbose
-- cargo test --verbose
+- cargo build
+- cargo test
 
 after_success: |
   if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
