@@ -68,10 +68,10 @@ impl VM {
         );
 
         ensure!(
-            program.core_version == env!("CARGO_PKG_VERSION"),
+            program.target_version == env!("CARGO_PKG_VERSION"),
             "wrong core version. Runtime: {:?} Program: {:?}",
             env!("CARGO_PKG_VERSION"),
-            program.core_version
+            program.target_version
         );
 
         if let Some(mem_pages) = program.mem_pages {
@@ -931,7 +931,7 @@ mod tests {
 
         pub fn generate_program() -> Program {
             Program {
-                core_version: env!("CARGO_PKG_VERSION").to_owned(),
+                target_version: env!("CARGO_PKG_VERSION").to_owned(),
                 system_id: BogusSystem::ID.to_owned(),
                 instructions: generate_instructions(),
                 mem_pages: Some(63),
