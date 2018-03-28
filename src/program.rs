@@ -30,8 +30,8 @@ use typedef::*;
 /// The container for a program
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Program {
-    /// The version of the VM API
-    pub core_version: String,
+    /// The target version of the `melon` API
+    pub target_version: String,
     /// The ID of the System the program is compiled against
     pub system_id: String,
     /// The instuctions of the program
@@ -41,7 +41,7 @@ pub struct Program {
 }
 
 impl Program {
-    /// Loads a MsgPack encoded melon image from the given file
+    /// Loads a MsgPack encoded and gzipped melon image from the given file
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Program> {
         let mut file = File::open(path)?;
 
@@ -59,7 +59,7 @@ impl Program {
         Ok(res)
     }
 
-    /// Saves the program to the given MsgPack encoded image file
+    /// Saves the program as a MsgPack encoded and gzipped image to the given file
     pub fn save_as<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let mut msgpack_buf = Vec::new();
         self.serialize(&mut Serializer::new(&mut msgpack_buf))?;
@@ -89,7 +89,7 @@ mod tests {
         let file_name = format!("test.{}", ROM_FILE_EXTENSION);
 
         let program = Program {
-            core_version: "bogus_version".into(),
+            target_version: "bogus_version".into(),
             system_id: "bogus_system".into(),
             instructions: rng.gen_iter().take(100).collect(),
             mem_pages: Some(1),
@@ -101,7 +101,7 @@ mod tests {
 
         fs::remove_file(file_name.clone()).unwrap();
 
-        assert_eq!(program.core_version, loaded_program.core_version);
+        assert_eq!(program.target_version, loaded_program.target_version);
         assert_eq!(program.system_id, loaded_program.system_id);
         assert_eq!(program.mem_pages, loaded_program.mem_pages);
     }

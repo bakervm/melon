@@ -41,7 +41,7 @@ fn create() {
     let mut virt = VM::default();
     virt.exec(
         &Program {
-            core_version: env!("CARGO_PKG_VERSION").into(),
+            target_version: env!("CARGO_PKG_VERSION").into(),
             system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
             mem_pages: Some(20),
@@ -57,7 +57,7 @@ fn wrong_system_id() {
 
     virt.exec(
         &Program {
-            core_version: env!("CARGO_PKG_VERSION").into(),
+            target_version: env!("CARGO_PKG_VERSION").into(),
             system_id: "__PIXEL_DISPLAY__".into(),
             instructions: Vec::new(),
             mem_pages: Some(20),
@@ -68,12 +68,12 @@ fn wrong_system_id() {
 
 #[test]
 #[should_panic]
-fn wrong_core_version() {
+fn wrong_target_version() {
     let mut virt = VM::default();
 
     virt.exec(
         &Program {
-            core_version: "0.0.0".into(),
+            target_version: "0.0.0".into(),
             system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
             mem_pages: Some(20),
