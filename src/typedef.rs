@@ -28,7 +28,7 @@ pub type SmallInt = i8;
 /// An integer with 16 bit
 pub type Int = i16;
 
-/// Typedef of a usize
+/// A memory or instruction address
 pub type Address = u16;
 
 /// A handy alias for `Result` that carries a generic error type.

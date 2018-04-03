@@ -27,11 +27,11 @@ use typedef::*;
 type Endianess = BigEndian;
 
 /// The size of a memory page in bytes
-pub const MEM_PAGE: Address = 1024;
+pub const MEM_PAGE: usize = 1024;
 /// The default number of pages allocated by the VM
-const DEFAULT_MEM_PAGE_COUNT: Address = 32;
+const DEFAULT_MEM_PAGE_COUNT: u8 = 32;
 /// The maimum number of pages that can be allocated by the VM
-const MAX_MEM_PAGE_COUNT: Address = 64;
+const MAX_MEM_PAGE_COUNT: u8 = 64;
 
 /// The state of the VM
 #[derive(Serialize, Deserialize, Default)]
@@ -60,6 +60,25 @@ pub struct VM {
 impl VM {
     /// Executes the given program using the given system and returns the program's exit status
     pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<SmallUInt> {
+        self.reset::<T>(&program)?;
+
+        system.prepare(self)?;
+
+        while (self.pc < self.program.len() as Address) && !self.halted {
+            self.do_cycle(system)?;
+
+            system.process(self)?;
+        }
+
+        system.finish(self)?;
+
+        Ok(self.return_value)
+    }
+
+    /// Resets the VM to its default state
+    fn reset<T: System>(&mut self, program: &Program) -> Result<()> {
+        *self = Default::default();
+
         ensure!(
             program.system_id == T::ID,
             "wrong system ID. Runtime: {:?} Program: {:?}",
@@ -76,9 +95,9 @@ impl VM {
 
         if let Some(mem_pages) = program.mem_pages {
             ensure!(
-                mem_pages <= MAX_MEM_PAGE_COUNT,
-                "requested memory too big. Requested pages: {} Maximum number of pages: {}",
-                mem_pages,
+                (mem_pages + T::MEM_PAGES) <= MAX_MEM_PAGE_COUNT,
+                "requested memory too big. Requested pages: {}. Maximum number of pages: {}",
+                (mem_pages + T::MEM_PAGES),
                 MAX_MEM_PAGE_COUNT
             );
 
@@ -88,35 +107,17 @@ impl VM {
             );
         }
 
-        self.reset(&program)?;
-
-        system.prepare(self)?;
-
-        while (self.pc < self.program.len() as Address) && !self.halted {
-            self.do_cycle(system)?;
-
-            system.process(self)?;
-        }
-
-        system.finish(self)?;
-
-        Ok(self.return_value)
-    }
-
-    /// Resets the VM to its default state
-    fn reset(&mut self, program: &Program) -> Result<()> {
-        *self = Default::default();
-
-        let mem_size = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) * MEM_PAGE;
+        let mem_pages = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
+        let mem_size: usize = (mem_pages as usize) * MEM_PAGE;
 
         ensure!(
             program.instructions.len() < UInt::max_value() as usize,
-            "program has too many instructions. Maximum instructions: {}",
+            "program has too many instructions. Maximum number of instructions: {}",
             UInt::max_value() - 1
         );
 
         self.program = program.instructions.clone();
-        self.mem = vec![0; mem_size as usize];
+        self.mem = vec![0; mem_size];
         self.sp = (self.mem.len() - 1) as Address;
 
         Ok(())
@@ -859,7 +860,7 @@ impl VM {
     }
 
     /// Allocates the given number of bytes in the heap
-    fn alloc(&mut self, amount: UInt) -> Result<()> {
+    pub fn alloc(&mut self, amount: UInt) -> Result<()> {
         self.alloc_stack.push_front(amount);
         self.bp += amount;
 
@@ -869,7 +870,7 @@ impl VM {
     }
 
     /// Undos the last allocation and frees the memory
-    fn free(&mut self) -> Result<()> {
+    pub fn free(&mut self) -> Result<()> {
         let amount = self.alloc_stack
             .pop_front()
             .ok_or(format_err!("cannot free unallocated memory"))?;
@@ -953,6 +954,8 @@ mod tests {
 
         impl System for BogusSystem {
             const ID: &'static str = "__BOGUS_SYSTEM__";
+
+            const MEM_PAGES: u8 = 1;
         }
 
         pub fn generate_system() -> BogusSystem {
@@ -1021,7 +1024,8 @@ mod tests {
     #[test]
     fn stack_u8() {
         let mut vm = VM::default();
-        vm.reset(&helper::generate_program()).unwrap();
+        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+            .unwrap();
 
         let mut rng = rand::thread_rng();
 
@@ -1036,7 +1040,8 @@ mod tests {
     #[test]
     fn stack_i8() {
         let mut vm = VM::default();
-        vm.reset(&helper::generate_program()).unwrap();
+        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+            .unwrap();
 
         let mut rng = rand::thread_rng();
 
@@ -1051,7 +1056,8 @@ mod tests {
     #[test]
     fn stack_u16() {
         let mut vm = VM::default();
-        vm.reset(&helper::generate_program()).unwrap();
+        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+            .unwrap();
 
         let mut rng = rand::thread_rng();
 
@@ -1066,7 +1072,8 @@ mod tests {
     #[test]
     fn stack_i16() {
         let mut vm = VM::default();
-        vm.reset(&helper::generate_program()).unwrap();
+        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+            .unwrap();
 
         let mut rng = rand::thread_rng();
 
