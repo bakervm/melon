@@ -102,7 +102,7 @@ impl VM {
             );
 
             ensure!(
-                (mem_pages + T::MEM_PAGES) > 0,
+                mem_pages > 0,
                 "requested memory too small. Number of memory pages can't be less than one"
             );
         }
