@@ -65,11 +65,11 @@ pub enum Instruction {
     Alloc(UInt),
     Free,
 
-    Jmp(Address),
-    Jnz(Address),
-    Jz(Address),
-    Jn(Address),
-    Jp(Address),
+    Jmp(bool, UInt),
+    Jnz(bool, UInt),
+    Jz(bool, UInt),
+    Jn(bool, UInt),
+    Jp(bool, UInt),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Rand)]

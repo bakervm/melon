@@ -176,13 +176,13 @@ impl VM {
             Instruction::SysCall(signal) => system.system_call(self, signal)?,
             Instruction::Call(addr) => self.call(addr),
             Instruction::Ret => self.ret()?,
-            Instruction::Alloc(amount) => self.alloc(amount),
+            Instruction::Alloc(amount) => self.alloc(amount)?,
             Instruction::Free => self.free()?,
-            Instruction::Jmp(addr) => self.jmp(addr)?,
-            Instruction::Jnz(addr) => self.jnz(addr)?,
-            Instruction::Jz(addr) => self.jz(addr)?,
-            Instruction::Jn(addr) => self.jn(addr)?,
-            Instruction::Jp(addr) => self.jp(addr)?,
+            Instruction::Jmp(forward, addr) => self.jmp(forward, addr)?,
+            Instruction::Jnz(forward, addr) => self.jnz(forward, addr)?,
+            Instruction::Jz(forward, addr) => self.jz(forward, addr)?,
+            Instruction::Jn(forward, addr) => self.jn(forward, addr)?,
+            Instruction::Jp(forward, addr) => self.jp(forward, addr)?,
         }
 
         Ok(())
@@ -209,6 +209,16 @@ impl VM {
         ensure!(
             addr < ((self.mem.len() - 1) as Address),
             "memory address out of bounds"
+        );
+
+        Ok(())
+    }
+
+    /// Checks the VM state for a heap crash and returns an error if so
+    fn detect_heap_crash(&mut self) -> Result<()> {
+        ensure!(
+            self.bp < self.sp,
+            "heap crash detected! Heap cannot overlap with stack"
         );
 
         Ok(())
@@ -694,6 +704,8 @@ impl VM {
     pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
         self.sp -= 1;
 
+        self.detect_heap_crash()?;
+
         let addr = self.sp;
 
         self.write_u8(addr, value)
@@ -702,6 +714,8 @@ impl VM {
     /// Pushes the given u16 onto the stack
     pub fn push_const_u16(&mut self, value: UInt) -> Result<()> {
         self.sp -= 2;
+
+        self.detect_heap_crash()?;
 
         let addr = self.sp;
 
@@ -712,6 +726,8 @@ impl VM {
     pub fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
         self.sp -= 1;
 
+        self.detect_heap_crash()?;
+
         let addr = self.sp;
 
         self.write_u8(addr, value as SmallUInt)
@@ -720,6 +736,8 @@ impl VM {
     /// Pushes the given i16 onto the stack
     pub fn push_const_i16(&mut self, value: Int) -> Result<()> {
         self.sp -= 2;
+
+        self.detect_heap_crash()?;
 
         let addr = self.sp;
 
@@ -841,9 +859,13 @@ impl VM {
     }
 
     /// Allocates the given number of bytes in the heap
-    fn alloc(&mut self, amount: UInt) {
+    fn alloc(&mut self, amount: UInt) -> Result<()> {
         self.alloc_stack.push_front(amount);
         self.bp += amount;
+
+        self.detect_heap_crash()?;
+
+        Ok(())
     }
 
     /// Undos the last allocation and frees the memory
@@ -858,47 +880,55 @@ impl VM {
     }
 
     /// Jumps unconditionally in the given direction
-    pub fn jmp(&mut self, addr: Address) -> Result<()> {
+    pub fn jmp(&mut self, forward: bool, addr: Address) -> Result<()> {
         ensure!(
             addr != (self.pc - 1),
             "jumps to nowhere will hang the program"
         );
-        self.pc = addr;
+
+        // Bring the program counter back to the original position
+        self.pc -= 1;
+
+        if forward {
+            self.pc += addr;
+        } else {
+            self.pc -= addr;
+        }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is not zero, in the given direction
-    pub fn jnz(&mut self, addr: Address) -> Result<()> {
+    pub fn jnz(&mut self, forward: bool, addr: Address) -> Result<()> {
         if self.cmp_res != 0 {
-            self.jmp(addr)?;
+            self.jmp(forward, addr)?;
         }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is zero, in the given direction
-    pub fn jz(&mut self, addr: Address) -> Result<()> {
+    pub fn jz(&mut self, forward: bool, addr: Address) -> Result<()> {
         if self.cmp_res == 0 {
-            self.jmp(addr)?;
+            self.jmp(forward, addr)?;
         }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is negative, in the given direction
-    pub fn jn(&mut self, addr: Address) -> Result<()> {
+    pub fn jn(&mut self, forward: bool, addr: Address) -> Result<()> {
         if self.cmp_res.is_negative() {
-            self.jmp(addr)?;
+            self.jmp(forward, addr)?;
         }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is positive, in the given direction
-    pub fn jp(&mut self, addr: Address) -> Result<()> {
+    pub fn jp(&mut self, forward: bool, addr: Address) -> Result<()> {
         if self.cmp_res.is_positive() {
-            self.jmp(addr)?;
+            self.jmp(forward, addr)?;
         }
 
         Ok(())
@@ -1873,50 +1903,50 @@ mod tests {
         let mut program = helper::generate_program();
 
         program.instructions = vec![
-            Instruction::Jmp(6),
-            Instruction::Jp(2),
-            Instruction::Jn(3),
-            Instruction::Jz(4),
-            Instruction::Jnz(5),
-            Instruction::Jmp(6),
-            Instruction::Jmp(7),
+            Instruction::Jmp(true, 6),
+            Instruction::Jp(true, 1),
+            Instruction::Jn(true, 1),
+            Instruction::Jz(true, 1),
+            Instruction::Jnz(true, 1),
+            Instruction::Jmp(true, 2),
+            Instruction::Jmp(false, 5),
         ];
 
         vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
-            Instruction::Jmp(1),
+            Instruction::Jmp(true, 1),
             Instruction::PushConstU8(2),
             Instruction::PushConstU8(1),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jp(100),
+            Instruction::Jp(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
-            Instruction::Jmp(1),
+            Instruction::Jmp(true, 1),
             Instruction::PushConstI8(1),
             Instruction::PushConstI8(2),
             Instruction::Cmp(IntegerType::I8),
-            Instruction::Jn(100),
+            Instruction::Jn(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
-            Instruction::Jmp(1),
+            Instruction::Jmp(true, 1),
             Instruction::PushConstU8(2),
             Instruction::PushConstU8(2),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jz(100),
+            Instruction::Jz(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
         program.instructions = vec![
-            Instruction::Jmp(1),
+            Instruction::Jmp(true, 1),
             Instruction::PushConstU8(40),
             Instruction::PushConstU8(20),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jnz(100),
+            Instruction::Jnz(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2053,5 +2083,21 @@ mod tests {
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.bp, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn heap_crash() {
+        let mut vm = VM::default();
+        let mut system = helper::generate_system();
+        let mut program = helper::generate_program();
+        program.mem_pages = Some(1);
+        program.instructions = vec![
+            Instruction::Alloc(600),
+            Instruction::PushConstU16(0xFFFF),
+            Instruction::Jmp(false, 1),
+        ];
+
+        vm.exec(&program, &mut system).unwrap();
     }
 }
