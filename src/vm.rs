@@ -27,7 +27,7 @@ use typedef::*;
 type Endianess = BigEndian;
 
 /// The size of a memory page in bytes
-pub const MEM_PAGE: Address = 1024;
+pub const MEM_PAGE: usize = 1024;
 /// The default number of pages allocated by the VM
 const DEFAULT_MEM_PAGE_COUNT: u8 = 32;
 /// The maimum number of pages that can be allocated by the VM
@@ -108,7 +108,7 @@ impl VM {
         }
 
         let mem_pages = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
-        let mem_size: usize = (mem_pages as usize) * (MEM_PAGE as usize);
+        let mem_size: usize = (mem_pages as usize) * MEM_PAGE;
 
         ensure!(
             program.instructions.len() < UInt::max_value() as usize,
