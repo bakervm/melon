@@ -8,10 +8,10 @@ readme = "README.md"
 license = "GPL-3.0"
 
 [dependencies]
-byteorder = "1.2.1"
+byteorder = "1.2.2"
 failure = "0.1.1"
-serde = "1.0.36"
-serde_derive = "1.0.36"
+serde = "1.0.37"
+serde_derive = "1.0.37"
 rand = "0.4.2"
 rmp-serde = "0.13.7"
 flate2 = "1.0.1"

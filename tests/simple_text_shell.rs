@@ -34,6 +34,8 @@ impl TextConsole {
 
 impl System for TextConsole {
     const ID: &'static str = "__TEXT_CONSOLE__";
+
+    const MEM_PAGES: u8 = 1;
 }
 
 #[test]

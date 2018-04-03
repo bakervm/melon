@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use vm::VM;
 use typedef::*;
+use vm::VM;
 
 #[allow(unused_variables)]
 /// An interface to communicate with the VM
@@ -57,6 +57,8 @@ use typedef::*;
 ///
 /// impl System for TextSystem {
 ///     const ID: &'static str = "__TEXT_SYSTEM__";
+///
+///     const MEM_PAGES: u8 = 1;
 ///
 ///     fn system_call(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
 ///         match signal {
@@ -109,6 +111,9 @@ use typedef::*;
 pub trait System: Send {
     /// A unique ID to identify the System
     const ID: &'static str;
+
+    /// The minimum number of memory pages required for this system
+    const MEM_PAGES: u8;
 
     /// Hook into the state after each cycle
     fn process(&mut self, vm: &mut VM) -> Result<()> {

@@ -16,15 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use flate2::Compression;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
+use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use instruction::Instruction;
 use rmps::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::Path;
+use std::{fs::File, io::{Read, Write}, path::Path};
 use typedef::*;
 
 /// The container for a program
@@ -36,8 +32,8 @@ pub struct Program {
     pub system_id: String,
     /// The instuctions of the program
     pub instructions: Vec<Instruction>,
-    /// (Optional) The number of allocated memory pages (1 page = 1024 Byte)
-    pub mem_pages: Option<Address>,
+    /// (Optional) The *minimum* number of allocated memory pages (1 page = 1024 Byte)
+    pub mem_pages: Option<u8>,
 }
 
 impl Program {
