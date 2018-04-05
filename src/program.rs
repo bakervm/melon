@@ -34,6 +34,8 @@ pub struct Program {
     pub instructions: Vec<Instruction>,
     /// (Optional) The *minimum* number of allocated memory pages (1 page = 1024 Byte)
     pub mem_pages: Option<u8>,
+    /// The entry address of the program
+    pub entry_point: Address,
 }
 
 impl Program {
@@ -89,6 +91,7 @@ mod tests {
             system_id: "bogus_system".into(),
             instructions: rng.gen_iter().take(100).collect(),
             mem_pages: Some(1),
+            entry_point: 0,
         };
 
         program.save_as(file_name.clone()).unwrap();
