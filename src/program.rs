@@ -34,6 +34,8 @@ pub struct Program {
     pub instructions: Vec<Instruction>,
     /// (Optional) The *minimum* number of allocated memory pages (1 page = 1024 Byte)
     pub mem_pages: Option<u8>,
+    /// The entry address of the program
+    pub entry_point: Address,
 }
 
 impl Program {

@@ -107,18 +107,24 @@ impl VM {
             );
         }
 
-        let mem_pages = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
-        let mem_size: usize = (mem_pages as usize) * MEM_PAGE;
+        ensure!(
+            program.instructions.len() <= (UInt::max_value() as usize),
+            "program has too many instructions. Maximum number of instructions: {}",
+            UInt::max_value()
+        );
 
         ensure!(
-            program.instructions.len() < UInt::max_value() as usize,
-            "program has too many instructions. Maximum number of instructions: {}",
-            UInt::max_value() - 1
+            program.instructions.len() < (program.entry_point as usize),
+            "entry point does not point to a valid instruction"
         );
+
+        let mem_pages = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
+        let mem_size: usize = (mem_pages as usize) * MEM_PAGE;
 
         self.program = program.instructions.clone();
         self.mem = vec![0; mem_size];
         self.sp = (self.mem.len() - 1) as Address;
+        self.pc = program.entry_point;
 
         Ok(())
     }
