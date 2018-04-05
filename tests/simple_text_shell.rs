@@ -47,6 +47,7 @@ fn create() {
             system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
             mem_pages: Some(20),
+            entry_point: 0,
         },
         &mut TextConsole::new(),
     ).unwrap();
@@ -63,6 +64,7 @@ fn wrong_system_id() {
             system_id: "__PIXEL_DISPLAY__".into(),
             instructions: Vec::new(),
             mem_pages: Some(20),
+            entry_point: 0,
         },
         &mut TextConsole::new(),
     ).unwrap();
@@ -79,6 +81,7 @@ fn wrong_target_version() {
             system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
             mem_pages: Some(20),
+            entry_point: 0,
         },
         &mut TextConsole::new(),
     ).unwrap();

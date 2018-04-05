@@ -114,7 +114,8 @@ impl VM {
         );
 
         ensure!(
-            program.instructions.len() < (program.entry_point as usize),
+            program.instructions.is_empty()
+                || (program.entry_point as usize) < program.instructions.len(),
             "entry point does not point to a valid instruction"
         );
 
@@ -974,6 +975,7 @@ mod tests {
                 system_id: BogusSystem::ID.to_owned(),
                 instructions: generate_instructions(),
                 mem_pages: Some(63),
+                entry_point: 0,
             }
         }
 

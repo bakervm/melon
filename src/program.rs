@@ -91,6 +91,7 @@ mod tests {
             system_id: "bogus_system".into(),
             instructions: rng.gen_iter().take(100).collect(),
             mem_pages: Some(1),
+            entry_point: 0,
         };
 
         program.save_as(file_name.clone()).unwrap();
