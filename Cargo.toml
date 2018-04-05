@@ -5,7 +5,7 @@ authors = ["Julian Laubstein <contact@julianlaubstein.de>"]
 description = "A library for creating retro computing platforms"
 repository = "https://github.com/bakervm/melon"
 readme = "README.md"
-license = "GPL-3.0"
+license = "MIT"
 
 [dependencies]
 byteorder = "1.2.2"

@@ -14,7 +14,7 @@ The `Program` struct takes care of loading and saving programs written for an im
 
 If you have any questions do not hesitate joining me on *Freenode* in `#bakervm`. I try to be online as often as possible :grin:
 
-[deps-image]:https://deps.rs/repo/github/bakervm/melon/status.svg
+[deps-image]: https://deps.rs/repo/github/bakervm/melon/status.svg
 [deps-link]: https://deps.rs/repo/github/bakervm/melon
 [crate-image]: https://img.shields.io/crates/v/melon.svg
 [crate-link]: https://crates.io/crates/melon
