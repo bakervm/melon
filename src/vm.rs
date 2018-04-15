@@ -16,7 +16,7 @@ const DEFAULT_MEM_PAGE_COUNT: u8 = 32;
 const MAX_MEM_PAGE_COUNT: u8 = 64;
 
 /// The state of the VM
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct VM {
     /// The program counter
     pc: Address,
@@ -47,9 +47,11 @@ impl VM {
         system.prepare(self)?;
 
         while (self.pc < self.program.len() as Address) && !self.halted {
+            system.pre_cycle(self)?;
+
             self.do_cycle(system)?;
 
-            system.process(self)?;
+            system.post_cycle(self)?;
         }
 
         system.finish(self)?;
@@ -117,8 +119,13 @@ impl VM {
         self.pc += 1;
     }
 
+    /// Returns the current value of the program counter
+    pub fn pc(&mut self) -> Address {
+        self.pc
+    }
+
     /// Returns the instruction at the current pc
-    fn current_instruction(&mut self) -> Result<Instruction> {
+    pub fn current_instruction(&mut self) -> Result<Instruction> {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
             Ok(current_instruction.clone())
         } else {
