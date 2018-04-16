@@ -97,8 +97,13 @@ pub trait System: Send {
     /// The minimum number of memory pages required for this system
     const MEM_PAGES: u8;
 
-    /// Hook into the state after each cycle
-    fn process(&mut self, vm: &mut VM) -> Result<()> {
+    /// Hook into the state *before* each cycle
+    fn pre_cycle(&mut self, vm: &mut VM) -> Result<()> {
+        Ok(())
+    }
+
+    /// Hook into the state *after* each cycle
+    fn post_cycle(&mut self, vm: &mut VM) -> Result<()> {
         Ok(())
     }
 
