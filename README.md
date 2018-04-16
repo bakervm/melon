@@ -12,6 +12,17 @@ A library for creating retro computing platforms
 
 The `Program` struct takes care of loading and saving programs written for an implementation of the `melon` backend. `melon` roms are gzipped msgpack files.
 
+## Debugger
+`melon` comes with an interactive debugger. You can install it using cargo:
+```
+cargo install melon
+```
+After that you can debug any `melon`-compatible rom file:
+```
+melon-dbg target/melon.rom
+```
+
+## Get in touch
 If you have any questions do not hesitate joining me on *Freenode* in `#bakervm`. I try to be online as often as possible :grin:
 
 [deps-image]: https://deps.rs/repo/github/bakervm/melon/status.svg
