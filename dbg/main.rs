@@ -39,10 +39,17 @@ fn run() -> Result<()> {
     println!();
 
     loop {
-        let ret = VM::default().exec(&program, &mut DbgSystem::default())?;
-        if ret > 0 {
-            break;
+        let ret = VM::default().exec(&program, &mut DbgSystem::default());
+
+        match ret {
+            Ok(val) => {
+                if val > 0 {
+                    break;
+                }
+            }
+            Err(err) => eprintln!("{}", err),
         }
+
         println!("Restarting...");
         println!();
     }
