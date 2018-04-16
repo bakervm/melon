@@ -16,10 +16,8 @@ impl System for DbgSystem {
     const MEM_PAGES: u8 = 0;
 
     fn prepare(&mut self, vm: &mut VM) -> Result<()> {
-        println!("Starting melonDbg");
-        println!("=================");
-        println!();
         println!("VM memory: {} bytes", vm.mem.len());
+        println!("Program memory: {} bytes", vm.program().len() * 4);
         println!();
 
         Ok(())
@@ -55,6 +53,7 @@ impl System for DbgSystem {
                 }
                 "next" | "n" => break,
                 "exit" | "q" => {
+                    vm.return_value = 1;
                     vm.halt();
                     break;
                 }

@@ -13,7 +13,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct Opt {
-    #[structopt(parse(from_os_str))]
+    #[structopt(parse(from_os_str), help = "the rom file to debug")]
     file: PathBuf,
 }
 
@@ -31,11 +31,21 @@ fn run() -> Result<()> {
     let opts = Opt::from_args();
 
     let mut program = Program::from_file(opts.file)?;
+    // We *force* compatablilty to the DbgSystem
     program.system_id = "__DEBUG__".into();
 
-    let mut system = DbgSystem::default();
+    println!("Starting melonDbg");
+    println!("=================");
+    println!();
 
-    VM::default().exec(&program, &mut system)?;
+    loop {
+        let ret = VM::default().exec(&program, &mut DbgSystem::default())?;
+        if ret > 0 {
+            break;
+        }
+        println!("Restarting...");
+        println!();
+    }
 
     Ok(())
 }

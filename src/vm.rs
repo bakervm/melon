@@ -134,6 +134,11 @@ impl VM {
         self.bp
     }
 
+    /// Returns the full list of instructions for the current program
+    pub fn program(&mut self) -> Vec<Instruction> {
+        self.program.clone()
+    }
+
     /// Returns the instruction at the current pc
     pub fn current_instruction(&mut self) -> Result<Instruction> {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
