@@ -124,6 +124,16 @@ impl VM {
         self.pc
     }
 
+    /// Returns the current value of the stack pointer
+    pub fn sp(&mut self) -> Address {
+        self.sp
+    }
+
+    /// Returns the current value of the base pointer
+    pub fn bp(&mut self) -> Address {
+        self.bp
+    }
+
     /// Returns the instruction at the current pc
     pub fn current_instruction(&mut self) -> Result<Instruction> {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
