@@ -65,42 +65,43 @@ impl VM {
 
         ensure!(
             program.system_id == T::ID,
-            "wrong system ID. Runtime: {:?} Program: {:?}",
-            T::ID,
-            program.system_id
+            VMError::WrongSystemId {
+                runtime: T::ID.into(),
+                program: program.system_id.clone()
+            }
         );
 
         ensure!(
             program.target_version == env!("CARGO_PKG_VERSION"),
-            "wrong core version. Runtime: {:?} Program: {:?}",
-            env!("CARGO_PKG_VERSION"),
-            program.target_version
+            VMError::WrongTargetVersion {
+                runtime: env!("CARGO_PKG_VERSION").into(),
+                program: program.target_version.clone(),
+            }
         );
 
         if let Some(mem_pages) = program.mem_pages {
             ensure!(
                 (mem_pages + T::MEM_PAGES) <= MAX_MEM_PAGE_COUNT,
-                "requested memory too big. Requested pages: {}. Maximum number of pages: {}",
-                (mem_pages + T::MEM_PAGES),
-                MAX_MEM_PAGE_COUNT
+                VMError::RequestedMemoryTooBig {
+                    requested: (mem_pages + T::MEM_PAGES),
+                    max: MAX_MEM_PAGE_COUNT
+                }
             );
 
-            ensure!(
-                mem_pages > 0,
-                "requested memory too small. Number of memory pages has to be at least one"
-            );
+            ensure!(mem_pages > 0, VMError::RequestedMemoryTooSmall);
         }
 
         ensure!(
             program.instructions.len() <= (UInt::max_value() as usize),
-            "program has too many instructions. Maximum number of instructions: {}",
-            UInt::max_value()
+            VMError::TooManyInstructions {
+                max: UInt::max_value()
+            }
         );
 
         ensure!(
             program.instructions.is_empty()
                 || (program.entry_point as usize) < program.instructions.len(),
-            "entry point does not point to a valid instruction"
+            VMError::InvalidEntryPoint
         );
 
         let mem_pages = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
@@ -144,7 +145,7 @@ impl VM {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
             Ok(current_instruction.clone())
         } else {
-            bail!("could no find instruction at ${:04X}", self.pc);
+            bail!(VMError::InvalidProgramCounter { pc: self.pc });
         }
     }
 
@@ -220,7 +221,7 @@ impl VM {
     fn ensure_valid_mem_addr(&mut self, addr: Address) -> Result<()> {
         ensure!(
             addr < ((self.mem.len() - 1) as Address),
-            "memory address out of bounds"
+            VMError::InvalidMemoryAddress { addr }
         );
 
         Ok(())
@@ -228,10 +229,7 @@ impl VM {
 
     /// Checks the VM state for a heap crash and returns an error if so
     fn detect_heap_crash(&mut self) -> Result<()> {
-        ensure!(
-            self.bp < self.sp,
-            "heap crash detected! Heap cannot overlap with stack"
-        );
+        ensure!(self.bp < self.sp, VMError::HeapCrash);
 
         Ok(())
     }
@@ -254,7 +252,8 @@ impl VM {
 
     /// Returns the u16 at the given address
     pub fn read_u16(&mut self, addr: Address) -> Result<UInt> {
-        let target_addr = addr.checked_add(1).ok_or(format_err!("invalid address"))?;
+        let target_addr = addr.checked_add(1)
+            .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
         self.ensure_valid_mem_addr(target_addr)?;
 
@@ -267,7 +266,8 @@ impl VM {
 
     /// Writes the given u16 to the given address
     pub fn write_u16(&mut self, addr: Address, value: UInt) -> Result<()> {
-        let target_addr = addr.checked_add(1).ok_or(format_err!("invalid address"))?;
+        let target_addr = addr.checked_add(1)
+            .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
         self.ensure_valid_mem_addr(target_addr)?;
 
@@ -282,8 +282,7 @@ impl VM {
     pub fn pop_u8(&mut self) -> Result<SmallUInt> {
         let addr = self.sp;
 
-        let value = self.read_u8(addr)
-            .context("cannot pop a value off an empty stack")?;
+        let value = self.read_u8(addr).context(VMError::PopEmptyStack)?;
 
         self.sp += 1;
 
@@ -294,8 +293,7 @@ impl VM {
     pub fn pop_u16(&mut self) -> Result<UInt> {
         let addr = self.sp;
 
-        let value = self.read_u16(addr)
-            .context("cannot pop a value off an empty stack")?;
+        let value = self.read_u16(addr).context(VMError::PopEmptyStack)?;
 
         self.sp += 2;
 
@@ -306,8 +304,7 @@ impl VM {
     pub fn pop_i8(&mut self) -> Result<SmallInt> {
         let addr = self.sp;
 
-        let value = self.read_u8(addr)
-            .context("cannot pop a value off an empty stack")?;
+        let value = self.read_u8(addr).context(VMError::PopEmptyStack)?;
 
         self.sp += 1;
 
@@ -318,8 +315,7 @@ impl VM {
     pub fn pop_i16(&mut self) -> Result<Int> {
         let addr = self.sp;
 
-        let value = self.read_u16(addr)
-            .context("cannot pop a value off an empty stack")?;
+        let value = self.read_u16(addr).context(VMError::PopEmptyStack)?;
 
         self.sp += 2;
 
@@ -369,28 +365,28 @@ impl VM {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
                 let value = a.checked_add(b)
-                    .ok_or(format_err!("attempt to add with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
                 let value = a.checked_add(b)
-                    .ok_or(format_err!("attempt to add with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
                 let value = a.checked_add(b)
-                    .ok_or(format_err!("attempt to add with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
                 let value = a.checked_add(b)
-                    .ok_or(format_err!("attempt to add with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_i16(value)
             }
@@ -404,28 +400,28 @@ impl VM {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
                 let value = a.checked_sub(b)
-                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
                 let value = a.checked_sub(b)
-                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
                 let value = a.checked_sub(b)
-                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
                 let value = a.checked_sub(b)
-                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_i16(value)
             }
@@ -439,28 +435,28 @@ impl VM {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
                 let value = a.checked_mul(b)
-                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
                 let value = a.checked_mul(b)
-                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
                 let value = a.checked_mul(b)
-                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
                 let value = a.checked_mul(b)
-                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+                    .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_i16(value)
             }
@@ -473,29 +469,25 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_div(b)
-                    .ok_or(format_err!("attempt to divide by zero"))?;
+                let value = a.checked_div(b).ok_or(VMError::DivideByZero)?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_div(b)
-                    .ok_or(format_err!("attempt to divide by zero"))?;
+                let value = a.checked_div(b).ok_or(VMError::DivideByZero)?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_div(b)
-                    .ok_or(format_err!("attempt to divide by zero"))?;
+                let value = a.checked_div(b).ok_or(VMError::DivideByZero)?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_div(b)
-                    .ok_or(format_err!("attempt to divide by zero"))?;
+                let value = a.checked_div(b).ok_or(VMError::DivideByZero)?;
 
                 self.push_const_i16(value)
             }
@@ -509,28 +501,36 @@ impl VM {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
                 let value = a.checked_shr(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shr".into(),
+                    })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
                 let value = a.checked_shr(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shr".into(),
+                    })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
                 let value = a.checked_shr(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shr".into(),
+                    })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
                 let value = a.checked_shr(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shr".into(),
+                    })?;
 
                 self.push_const_i16(value)
             }
@@ -544,29 +544,33 @@ impl VM {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
                 let value = a.checked_shl(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
-
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shl".into(),
+                    })?;
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
                 let value = a.checked_shl(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
-
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shl".into(),
+                    })?;
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
                 let value = a.checked_shl(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
-
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shl".into(),
+                    })?;
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
                 let value = a.checked_shl(b as u32)
-                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
-
+                    .ok_or(VMError::UnableToApplyInstruction {
+                        instr: "shl".into(),
+                    })?;
                 self.push_const_i16(value)
             }
         }
@@ -674,8 +678,8 @@ impl VM {
 
                 self.write_u16(addr, converted as UInt)
             }
-            IntegerType::U8 => bail!("unable to create negative u8"),
-            IntegerType::U16 => bail!("unable to create negative u16"),
+            IntegerType::U8 => bail!(VMError::NegativeUnsigned),
+            IntegerType::U16 => bail!(VMError::NegativeUnsigned),
         }
     }
 
@@ -939,7 +943,7 @@ impl VM {
     pub fn ret(&mut self) -> Result<()> {
         let return_addr = self.call_stack
             .pop_front()
-            .ok_or(format_err!("cannot return from an empty call stack"))?;
+            .ok_or(VMError::ReturnFromEmptyCallStack)?;
 
         self.pc = return_addr;
 
@@ -949,7 +953,10 @@ impl VM {
     /// Allocates the given number of bytes in the heap
     pub fn alloc(&mut self, amount: UInt) -> Result<()> {
         self.alloc_stack.push_front(amount);
-        self.bp += amount;
+        // self.bp += amount;
+        self.bp = self.bp
+            .checked_add(amount)
+            .ok_or(VMError::InvalidMemoryAddress { addr: self.bp })?;
 
         self.detect_heap_crash()?;
 
@@ -960,7 +967,7 @@ impl VM {
     pub fn free(&mut self) -> Result<()> {
         let amount = self.alloc_stack
             .pop_front()
-            .ok_or(format_err!("cannot free unallocated memory"))?;
+            .ok_or(VMError::FreeUnallocatedMemory)?;
 
         self.bp -= amount;
 
@@ -969,10 +976,7 @@ impl VM {
 
     /// Jumps unconditionally in the given direction
     pub fn jmp(&mut self, forward: bool, addr: Address) -> Result<()> {
-        ensure!(
-            addr != (self.pc - 1),
-            "jumps to nowhere will hang the program"
-        );
+        ensure!(addr != (self.pc - 1), VMError::JumpResultedInUnwantedHang);
 
         // Bring the program counter back to the original position
         self.pc -= 1;
