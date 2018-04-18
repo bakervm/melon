@@ -254,7 +254,9 @@ impl VM {
 
     /// Returns the u16 at the given address
     pub fn read_u16(&mut self, addr: Address) -> Result<UInt> {
-        self.ensure_valid_mem_addr(addr + 1)?;
+        let target_addr = addr.checked_add(1).ok_or(format_err!("invalid address"))?;
+
+        self.ensure_valid_mem_addr(target_addr)?;
 
         let inner_addr_start = addr as usize;
 
@@ -265,7 +267,9 @@ impl VM {
 
     /// Writes the given u16 to the given address
     pub fn write_u16(&mut self, addr: Address, value: UInt) -> Result<()> {
-        self.ensure_valid_mem_addr(addr + 1)?;
+        let target_addr = addr.checked_add(1).ok_or(format_err!("invalid address"))?;
+
+        self.ensure_valid_mem_addr(target_addr)?;
 
         let inner_addr_start = addr as usize;
 
@@ -364,19 +368,31 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                self.push_const_u8(a + b)
+                let value = a.checked_add(b)
+                    .ok_or(format_err!("attempt to add with overflow"))?;
+
+                self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                self.push_const_u16(a + b)
+                let value = a.checked_add(b)
+                    .ok_or(format_err!("attempt to add with overflow"))?;
+
+                self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                self.push_const_i8(a + b)
+                let value = a.checked_add(b)
+                    .ok_or(format_err!("attempt to add with overflow"))?;
+
+                self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                self.push_const_i16(a + b)
+                let value = a.checked_add(b)
+                    .ok_or(format_err!("attempt to add with overflow"))?;
+
+                self.push_const_i16(value)
             }
         }
     }
@@ -387,19 +403,31 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                self.push_const_u8(a - b)
+                let value = a.checked_sub(b)
+                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+
+                self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                self.push_const_u16(a - b)
+                let value = a.checked_sub(b)
+                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+
+                self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                self.push_const_i8(a - b)
+                let value = a.checked_sub(b)
+                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+
+                self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                self.push_const_i16(a - b)
+                let value = a.checked_sub(b)
+                    .ok_or(format_err!("attempt to subtract with overflow"))?;
+
+                self.push_const_i16(value)
             }
         }
     }
@@ -410,19 +438,31 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                self.push_const_u8(a * b)
+                let value = a.checked_mul(b)
+                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+
+                self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                self.push_const_u16(a * b)
+                let value = a.checked_mul(b)
+                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+
+                self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                self.push_const_i8(a * b)
+                let value = a.checked_mul(b)
+                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+
+                self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                self.push_const_i16(a * b)
+                let value = a.checked_mul(b)
+                    .ok_or(format_err!("attempt to multiply with overflow"))?;
+
+                self.push_const_i16(value)
             }
         }
     }
@@ -433,19 +473,31 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                self.push_const_u8(a / b)
+                let value = a.checked_div(b)
+                    .ok_or(format_err!("attempt to divide by zero"))?;
+
+                self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                self.push_const_u16(a / b)
+                let value = a.checked_div(b)
+                    .ok_or(format_err!("attempt to divide by zero"))?;
+
+                self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                self.push_const_i8(a / b)
+                let value = a.checked_div(b)
+                    .ok_or(format_err!("attempt to divide by zero"))?;
+
+                self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                self.push_const_i16(a / b)
+                let value = a.checked_div(b)
+                    .ok_or(format_err!("attempt to divide by zero"))?;
+
+                self.push_const_i16(value)
             }
         }
     }
@@ -456,19 +508,31 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                self.push_const_u8(a >> b)
+                let value = a.checked_shr(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                self.push_const_u16(a >> b)
+                let value = a.checked_shr(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                self.push_const_i8(a >> b)
+                let value = a.checked_shr(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                self.push_const_i16(a >> b)
+                let value = a.checked_shr(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shr\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_i16(value)
             }
         }
     }
@@ -479,19 +543,31 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                self.push_const_u8(a << b)
+                let value = a.checked_shl(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                self.push_const_u16(a << b)
+                let value = a.checked_shl(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                self.push_const_i8(a << b)
+                let value = a.checked_shl(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                self.push_const_i16(a << b)
+                let value = a.checked_shl(b as u32)
+                    .ok_or(format_err!("unable to apply the \"shl\" instruction to values larger than or equal to the number of bits"))?;
+
+                self.push_const_i16(value)
             }
         }
     }
@@ -2118,5 +2194,32 @@ mod tests {
         ];
 
         vm.exec(&program, &mut system).unwrap();
+    }
+
+    #[test]
+    fn fuzz_instructions() {
+        let mut rng = rand::thread_rng();
+
+        let instructions: Vec<Instruction> = rng.gen_iter()
+            .filter(|inst| match *inst {
+                Instruction::SysCall(0)
+                | Instruction::Call(..)
+                | Instruction::Ret
+                | Instruction::Jn(..)
+                | Instruction::Jp(..)
+                | Instruction::Jz(..)
+                | Instruction::Jnz(..)
+                | Instruction::Jmp(..) => false,
+                _ => true,
+            })
+            .take(64_000)
+            .collect();
+
+        let mut vm = VM::default();
+        let mut system = helper::generate_system();
+        let mut program = helper::generate_program();
+        program.instructions = instructions;
+
+        let _ = vm.exec(&program, &mut system);
     }
 }

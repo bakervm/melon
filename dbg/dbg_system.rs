@@ -50,6 +50,7 @@ impl System for DbgSystem {
                     println!("rund\t- run the program with a delay after each instruction");
                     println!("step\t- toggle stepmode");
                     println!("ps\t- print the stack");
+                    println!("pi\t- prints the current program with all its instructions");
                 }
                 "next" | "n" => break,
                 "exit" | "q" => {
@@ -83,6 +84,14 @@ impl System for DbgSystem {
                     let sp = vm.sp() as usize;
                     let max = vm.mem.len() - 1;
                     println!("Stack {:?}", &vm.mem[sp..max])
+                }
+                "pi" => {
+                    println!("Dumping program memory");
+                    println!();
+                    let program = vm.program();
+                    for (pc, instruction) in program.into_iter().enumerate() {
+                        println!("[{}] {:?}", pc, instruction)
+                    }
                 }
                 other if other.is_empty() => {
                     if self.step {
