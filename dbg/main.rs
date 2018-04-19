@@ -47,7 +47,13 @@ fn run() -> Result<()> {
                     break;
                 }
             }
-            Err(err) => eprintln!("{}", err),
+            Err(err) => match err.downcast()? {
+                error @ VMError::WrongTargetVersion { .. } => {
+                    eprintln!("{}", error);
+                    break;
+                }
+                other => eprintln!("{}", other),
+            },
         }
 
         println!("Restarting...");
