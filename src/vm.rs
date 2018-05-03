@@ -15,6 +15,13 @@ const DEFAULT_MEM_PAGE_COUNT: u8 = 32;
 /// The maimum number of pages that can be allocated by the VM
 const MAX_MEM_PAGE_COUNT: u8 = 64;
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
+enum Ordering {
+    Less,
+    Greater,
+    Equal,
+}
+
 /// The state of the VM
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct VM {
@@ -35,7 +42,7 @@ pub struct VM {
     /// The stack of previous allocations
     alloc_stack: LinkedList<UInt>,
     /// The Result of the last comparison
-    cmp_res: i32,
+    cmp_res: Option<Ordering>,
     halted: bool,
 }
 
@@ -192,10 +199,12 @@ impl VM {
             Instruction::Alloc(amount) => self.alloc(amount)?,
             Instruction::Free => self.free()?,
             Instruction::Jmp(forward, addr) => self.jmp(forward, addr)?,
-            Instruction::Jnz(forward, addr) => self.jnz(forward, addr)?,
-            Instruction::Jz(forward, addr) => self.jz(forward, addr)?,
-            Instruction::Jn(forward, addr) => self.jn(forward, addr)?,
-            Instruction::Jp(forward, addr) => self.jp(forward, addr)?,
+            Instruction::Jneq(forward, addr) => self.jneq(forward, addr)?,
+            Instruction::Jeq(forward, addr) => self.jeq(forward, addr)?,
+            Instruction::Jlt(forward, addr) => self.jlt(forward, addr)?,
+            Instruction::JltEq(forward, addr) => self.jlt_eq(forward, addr)?,
+            Instruction::Jgt(forward, addr) => self.jgt(forward, addr)?,
+            Instruction::JgtEq(forward, addr) => self.jgt_eq(forward, addr)?,
         }
 
         Ok(())
@@ -689,31 +698,49 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                self.cmp_res = (a - b) as i32;
+
+                self.cmp_res = Some(Self::do_compare(a, b));
+
                 self.push_const_u8(a)?;
                 self.push_const_u8(b)?;
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                self.cmp_res = (a - b) as i32;
+
+                self.cmp_res = Some(Self::do_compare(a, b));
+
                 self.push_const_u16(a)?;
                 self.push_const_u16(b)?;
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                self.cmp_res = (a - b) as i32;
+
+                self.cmp_res = Some(Self::do_compare(a, b));
+
                 self.push_const_i8(a)?;
                 self.push_const_i8(b)?;
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                self.cmp_res = (a - b) as i32;
+
+                self.cmp_res = Some(Self::do_compare(a, b));
+
                 self.push_const_i16(a)?;
                 self.push_const_i16(b)?;
             }
         }
 
         Ok(())
+    }
+
+    fn do_compare<T: Ord>(num_a: T, num_b: T) -> Ordering {
+        if num_a < num_b {
+            Ordering::Less
+        } else if num_a > num_b {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
     }
 
     /// *Increments* the top stack value
@@ -888,8 +915,18 @@ impl VM {
 
     /// Like *store* but takes the address off the stack before storing
     pub fn store_indirect(&mut self, ty: IntegerType) -> Result<()> {
-        let addr = self.pop_u16()?;
-        self.store(ty, addr)?;
+        match ty {
+            IntegerType::U8 | IntegerType::I8 => {
+                let value = self.pop_u8()?;
+                let addr = self.pop_u16()?;
+                self.write_u8(addr, value)?;
+            }
+            IntegerType::U16 | IntegerType::I16 => {
+                let value = self.pop_u16()?;
+                let addr = self.pop_u16()?;
+                self.write_u16(addr, value)?;
+            }
+        }
 
         Ok(())
     }
@@ -991,17 +1028,18 @@ impl VM {
     }
 
     /// Jumps if the value of the cmp register is not zero, in the given direction
-    pub fn jnz(&mut self, forward: bool, addr: Address) -> Result<()> {
-        if self.cmp_res != 0 {
-            self.jmp(forward, addr)?;
+    pub fn jneq(&mut self, forward: bool, addr: Address) -> Result<()> {
+        match self.cmp_res {
+            Some(Ordering::Less) | Some(Ordering::Greater) => self.jmp(forward, addr)?,
+            _ => {}
         }
 
         Ok(())
     }
 
     /// Jumps if the value of the cmp register is zero, in the given direction
-    pub fn jz(&mut self, forward: bool, addr: Address) -> Result<()> {
-        if self.cmp_res == 0 {
+    pub fn jeq(&mut self, forward: bool, addr: Address) -> Result<()> {
+        if let Some(Ordering::Equal) = self.cmp_res {
             self.jmp(forward, addr)?;
         }
 
@@ -1009,8 +1047,27 @@ impl VM {
     }
 
     /// Jumps if the value of the cmp register is negative, in the given direction
-    pub fn jn(&mut self, forward: bool, addr: Address) -> Result<()> {
-        if self.cmp_res.is_negative() {
+    pub fn jlt(&mut self, forward: bool, addr: Address) -> Result<()> {
+        if let Some(Ordering::Less) = self.cmp_res {
+            self.jmp(forward, addr)?;
+        }
+
+        Ok(())
+    }
+
+    /// Jumps if the value of the cmp register is negative, in the given direction
+    pub fn jlt_eq(&mut self, forward: bool, addr: Address) -> Result<()> {
+        match self.cmp_res {
+            Some(Ordering::Less) | Some(Ordering::Equal) => self.jmp(forward, addr)?,
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    /// Jumps if the value of the cmp register is positive, in the given direction
+    pub fn jgt(&mut self, forward: bool, addr: Address) -> Result<()> {
+        if let Some(Ordering::Greater) = self.cmp_res {
             self.jmp(forward, addr)?;
         }
 
@@ -1018,9 +1075,10 @@ impl VM {
     }
 
     /// Jumps if the value of the cmp register is positive, in the given direction
-    pub fn jp(&mut self, forward: bool, addr: Address) -> Result<()> {
-        if self.cmp_res.is_positive() {
-            self.jmp(forward, addr)?;
+    pub fn jgt_eq(&mut self, forward: bool, addr: Address) -> Result<()> {
+        match self.cmp_res {
+            Some(Ordering::Greater) | Some(Ordering::Equal) => self.jmp(forward, addr)?,
+            _ => {}
         }
 
         Ok(())
@@ -1795,7 +1853,7 @@ mod tests {
 
         vm.exec(&program, &mut system).unwrap();
 
-        assert_eq!(vm.cmp_res, 6);
+        assert_eq!(vm.cmp_res.unwrap(), Ordering::Greater);
         assert_eq!(vm.pop_u8().unwrap(), 98);
         assert_eq!(vm.pop_u8().unwrap(), 104);
 
@@ -1807,7 +1865,7 @@ mod tests {
 
         vm.exec(&program, &mut system).unwrap();
 
-        assert_eq!(vm.cmp_res, 0);
+        assert_eq!(vm.cmp_res.unwrap(), Ordering::Equal);
         assert_eq!(vm.pop_u16().unwrap(), 20000);
         assert_eq!(vm.pop_u16().unwrap(), 20000);
 
@@ -1819,7 +1877,7 @@ mod tests {
 
         vm.exec(&program, &mut system).unwrap();
 
-        assert_eq!(vm.cmp_res, 32);
+        assert_eq!(vm.cmp_res.unwrap(), Ordering::Greater);
         assert_eq!(vm.pop_i8().unwrap(), -64);
         assert_eq!(vm.pop_i8().unwrap(), -32);
 
@@ -1831,7 +1889,7 @@ mod tests {
 
         vm.exec(&program, &mut system).unwrap();
 
-        assert_eq!(vm.cmp_res, 3200);
+        assert_eq!(vm.cmp_res.unwrap(), Ordering::Greater);
         assert_eq!(vm.pop_i16().unwrap(), -6400);
         assert_eq!(vm.pop_i16().unwrap(), -3200);
     }
@@ -2003,10 +2061,10 @@ mod tests {
 
         program.instructions = vec![
             Instruction::Jmp(true, 6),
-            Instruction::Jp(true, 1),
-            Instruction::Jn(true, 1),
-            Instruction::Jz(true, 1),
-            Instruction::Jnz(true, 1),
+            Instruction::Jgt(true, 1),
+            Instruction::Jlt(true, 1),
+            Instruction::Jeq(true, 1),
+            Instruction::Jneq(true, 1),
             Instruction::Jmp(true, 2),
             Instruction::Jmp(false, 5),
         ];
@@ -2018,7 +2076,7 @@ mod tests {
             Instruction::PushConstU8(2),
             Instruction::PushConstU8(1),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jp(true, 100),
+            Instruction::Jgt(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
@@ -2027,7 +2085,7 @@ mod tests {
             Instruction::PushConstI8(1),
             Instruction::PushConstI8(2),
             Instruction::Cmp(IntegerType::I8),
-            Instruction::Jn(true, 100),
+            Instruction::Jlt(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
@@ -2036,7 +2094,7 @@ mod tests {
             Instruction::PushConstU8(2),
             Instruction::PushConstU8(2),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jz(true, 100),
+            Instruction::Jeq(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
 
@@ -2045,7 +2103,7 @@ mod tests {
             Instruction::PushConstU8(40),
             Instruction::PushConstU8(20),
             Instruction::Cmp(IntegerType::U8),
-            Instruction::Jnz(true, 100),
+            Instruction::Jneq(true, 100),
         ];
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2057,8 +2115,8 @@ mod tests {
         let mut program = helper::generate_program();
 
         program.instructions = vec![
-            Instruction::PushConstI16(-1234),
             Instruction::PushConstU16(0x0FFF),
+            Instruction::PushConstI16(-1234),
             Instruction::StoreIndirect(IntegerType::I16),
             Instruction::PushConstU16(0x0FFF - 1),
             Instruction::PushConstU16(1),
@@ -2204,20 +2262,7 @@ mod tests {
     fn fuzz_instructions() {
         let mut rng = rand::thread_rng();
 
-        let instructions: Vec<Instruction> = rng.gen_iter()
-            .filter(|inst| match *inst {
-                Instruction::SysCall(0)
-                | Instruction::Call(..)
-                | Instruction::Ret
-                | Instruction::Jn(..)
-                | Instruction::Jp(..)
-                | Instruction::Jz(..)
-                | Instruction::Jnz(..)
-                | Instruction::Jmp(..) => false,
-                _ => true,
-            })
-            .take(64_000)
-            .collect();
+        let instructions: Vec<Instruction> = rng.gen_iter().take(64_000).collect();
 
         let mut vm = VM::default();
         let mut system = helper::generate_system();
