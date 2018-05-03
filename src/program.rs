@@ -1,8 +1,12 @@
-use flate2::{Compression, read::GzDecoder, write::GzEncoder};
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use instruction::Instruction;
 use rmps::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::{Read, Write}, path::Path};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+};
 use typedef::*;
 
 /// The container for a program
@@ -28,7 +32,14 @@ impl Program {
         let mut gz_buf = Vec::new();
         file.read_to_end(&mut gz_buf)?;
 
-        let mut decoder = GzDecoder::new(&gz_buf[..]);
+        let res = Self::from_vec(gz_buf)?;
+
+        Ok(res)
+    }
+
+    /// Decodes a program from MsgPack encoded and gzipped image data
+    pub fn from_vec(vec: Vec<u8>) -> Result<Program> {
+        let mut decoder = GzDecoder::new(&vec[..]);
         let mut msgpack_buf = Vec::new();
         decoder.read_to_end(&mut msgpack_buf)?;
 
@@ -39,14 +50,21 @@ impl Program {
         Ok(res)
     }
 
-    /// Saves the program as a MsgPack encoded and gzipped image to the given file
-    pub fn save_as<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+    /// Encodes the program as MsgPack encoded and gzipped image data
+    pub fn to_vec(&self) -> Result<Vec<u8>> {
         let mut msgpack_buf = Vec::new();
         self.serialize(&mut Serializer::new(&mut msgpack_buf))?;
 
         let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
         encoder.write_all(&msgpack_buf[..])?;
         let gz_buf = encoder.finish()?;
+
+        Ok(gz_buf)
+    }
+
+    /// Saves the program as a MsgPack encoded and gzipped image to the given file
+    pub fn save_as<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let gz_buf = self.to_vec()?;
 
         let mut file = File::create(path)?;
         file.write_all(&gz_buf[..])?;

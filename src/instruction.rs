@@ -48,10 +48,12 @@ pub enum Instruction {
     Free,
 
     Jmp(bool, UInt),
-    Jnz(bool, UInt),
-    Jz(bool, UInt),
-    Jn(bool, UInt),
-    Jp(bool, UInt),
+    Jeq(bool, UInt),
+    Jneq(bool, UInt),
+    Jlt(bool, UInt),
+    JltEq(bool, UInt),
+    Jgt(bool, UInt),
+    JgtEq(bool, UInt),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Rand)]
