@@ -1027,7 +1027,7 @@ impl VM {
         Ok(())
     }
 
-    /// Jumps if the value of the cmp register is not zero, in the given direction
+    /// Jumps in the given direction if the compared values are *not equal*
     pub fn jneq(&mut self, forward: bool, addr: Address) -> Result<()> {
         match self.cmp_res {
             Some(Ordering::Less) | Some(Ordering::Greater) => self.jmp(forward, addr)?,
@@ -1037,7 +1037,7 @@ impl VM {
         Ok(())
     }
 
-    /// Jumps if the value of the cmp register is zero, in the given direction
+    /// Jumps in the given direction if the compared values are *equal*
     pub fn jeq(&mut self, forward: bool, addr: Address) -> Result<()> {
         if let Some(Ordering::Equal) = self.cmp_res {
             self.jmp(forward, addr)?;
@@ -1046,7 +1046,7 @@ impl VM {
         Ok(())
     }
 
-    /// Jumps if the value of the cmp register is negative, in the given direction
+    /// Jumps in the given direction if value _a_ is *less than* value _b_
     pub fn jlt(&mut self, forward: bool, addr: Address) -> Result<()> {
         if let Some(Ordering::Less) = self.cmp_res {
             self.jmp(forward, addr)?;
@@ -1055,7 +1055,7 @@ impl VM {
         Ok(())
     }
 
-    /// Jumps if the value of the cmp register is negative, in the given direction
+    /// Jumps in the given direction if value _a_ is *less than or equal* to value _b_
     pub fn jlt_eq(&mut self, forward: bool, addr: Address) -> Result<()> {
         match self.cmp_res {
             Some(Ordering::Less) | Some(Ordering::Equal) => self.jmp(forward, addr)?,
@@ -1065,7 +1065,7 @@ impl VM {
         Ok(())
     }
 
-    /// Jumps if the value of the cmp register is positive, in the given direction
+    /// Jumps in the given direction if value _a_ is *greater than* value _b_
     pub fn jgt(&mut self, forward: bool, addr: Address) -> Result<()> {
         if let Some(Ordering::Greater) = self.cmp_res {
             self.jmp(forward, addr)?;
@@ -1074,7 +1074,7 @@ impl VM {
         Ok(())
     }
 
-    /// Jumps if the value of the cmp register is positive, in the given direction
+    /// Jumps in the given direction if value _a_ is *greater than or equal* to value _b_
     pub fn jgt_eq(&mut self, forward: bool, addr: Address) -> Result<()> {
         match self.cmp_res {
             Some(Ordering::Greater) | Some(Ordering::Equal) => self.jmp(forward, addr)?,
