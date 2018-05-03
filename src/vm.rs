@@ -2115,8 +2115,8 @@ mod tests {
         let mut program = helper::generate_program();
 
         program.instructions = vec![
-            Instruction::PushConstI16(-1234),
             Instruction::PushConstU16(0x0FFF),
+            Instruction::PushConstI16(-1234),
             Instruction::StoreIndirect(IntegerType::I16),
             Instruction::PushConstU16(0x0FFF - 1),
             Instruction::PushConstU16(1),
