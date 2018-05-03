@@ -1,6 +1,6 @@
 [package]
 name = "melon"
-version = "0.10.0"
+version = "0.11.0"
 authors = ["Julian Laubstein <contact@julianlaubstein.de>"]
 description = "A library for creating retro computing platforms"
 repository = "https://github.com/bakervm/melon"
