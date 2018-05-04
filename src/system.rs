@@ -42,7 +42,7 @@ use vm::VM;
 ///
 ///     const MEM_PAGES: u8 = 1;
 ///
-///     fn system_call(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
+///     fn system_call(&mut self, vm: &mut VM, signal: u16) -> Result<()> {
 ///         match signal {
 ///             // This is pretty much like `write_line`
 ///             1 => {
@@ -118,7 +118,7 @@ pub trait System: Send {
     }
 
     /// React to the `SysCall` instruction and process the given signal
-    fn system_call(&mut self, vm: &mut VM, signal: UInt) -> Result<()> {
+    fn system_call(&mut self, vm: &mut VM, signal: u16) -> Result<()> {
         Ok(())
     }
 }

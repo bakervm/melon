@@ -34,13 +34,13 @@ pub struct VM {
     /// The base pointer
     bp: Address,
     /// The memory allocated and used by the VM
-    pub mem: Vec<SmallUInt>,
+    pub mem: Vec<u8>,
     /// The return value of the VM
-    pub return_value: SmallUInt,
+    pub return_value: u8,
     /// The stack of calls (return addresses)
     call_stack: LinkedList<Address>,
     /// The stack of previous allocations
-    alloc_stack: LinkedList<UInt>,
+    alloc_stack: LinkedList<u16>,
     /// The Result of the last comparison
     cmp_res: Option<Ordering>,
     halted: bool,
@@ -48,7 +48,7 @@ pub struct VM {
 
 impl VM {
     /// Executes the given program using the given system and returns the program's exit status
-    pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<SmallUInt> {
+    pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<u8> {
         self.reset::<T>(&program)?;
 
         system.prepare(self)?;
@@ -99,9 +99,9 @@ impl VM {
         }
 
         ensure!(
-            program.instructions.len() <= (UInt::max_value() as usize),
+            program.instructions.len() <= (u16::max_value() as usize),
             VMError::TooManyInstructions {
-                max: UInt::max_value()
+                max: u16::max_value()
             }
         );
 
@@ -244,14 +244,14 @@ impl VM {
     }
 
     /// Returns the u8 at the given address
-    pub fn read_u8(&mut self, addr: Address) -> Result<SmallUInt> {
+    pub fn read_u8(&mut self, addr: Address) -> Result<u8> {
         self.ensure_valid_mem_addr(addr)?;
 
         Ok(self.mem[addr as usize])
     }
 
     /// Writes the given u8 to the given address
-    pub fn write_u8(&mut self, addr: Address, value: SmallUInt) -> Result<()> {
+    pub fn write_u8(&mut self, addr: Address, value: u8) -> Result<()> {
         self.ensure_valid_mem_addr(addr)?;
 
         self.mem[addr as usize] = value;
@@ -260,7 +260,7 @@ impl VM {
     }
 
     /// Returns the u16 at the given address
-    pub fn read_u16(&mut self, addr: Address) -> Result<UInt> {
+    pub fn read_u16(&mut self, addr: Address) -> Result<u16> {
         let target_addr = addr.checked_add(1)
             .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
@@ -274,7 +274,7 @@ impl VM {
     }
 
     /// Writes the given u16 to the given address
-    pub fn write_u16(&mut self, addr: Address, value: UInt) -> Result<()> {
+    pub fn write_u16(&mut self, addr: Address, value: u16) -> Result<()> {
         let target_addr = addr.checked_add(1)
             .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
@@ -288,7 +288,7 @@ impl VM {
     }
 
     /// Helper method for popping a u8 value off the stack
-    pub fn pop_u8(&mut self) -> Result<SmallUInt> {
+    pub fn pop_u8(&mut self) -> Result<u8> {
         let addr = self.sp;
 
         let value = self.read_u8(addr).context(VMError::PopEmptyStack)?;
@@ -299,7 +299,7 @@ impl VM {
     }
 
     /// Helper method for popping a u16 value off the stack
-    pub fn pop_u16(&mut self) -> Result<UInt> {
+    pub fn pop_u16(&mut self) -> Result<u16> {
         let addr = self.sp;
 
         let value = self.read_u16(addr).context(VMError::PopEmptyStack)?;
@@ -310,29 +310,29 @@ impl VM {
     }
 
     /// Helper method for popping a i8 value off the stack
-    pub fn pop_i8(&mut self) -> Result<SmallInt> {
+    pub fn pop_i8(&mut self) -> Result<i8> {
         let addr = self.sp;
 
         let value = self.read_u8(addr).context(VMError::PopEmptyStack)?;
 
         self.sp += 1;
 
-        Ok(value as SmallInt)
+        Ok(value as i8)
     }
 
     /// Helper method for popping a i16 value off the stack
-    pub fn pop_i16(&mut self) -> Result<Int> {
+    pub fn pop_i16(&mut self) -> Result<i16> {
         let addr = self.sp;
 
         let value = self.read_u16(addr).context(VMError::PopEmptyStack)?;
 
         self.sp += 2;
 
-        Ok(value as Int)
+        Ok(value as i16)
     }
 
     /// Returns two u8 values as (left-hand-side, right-hand-side)
-    pub fn pop_u8_lr(&mut self) -> Result<(SmallUInt, SmallUInt)> {
+    pub fn pop_u8_lr(&mut self) -> Result<(u8, u8)> {
         let b = self.pop_u8()?;
         let a = self.pop_u8()?;
 
@@ -340,7 +340,7 @@ impl VM {
     }
 
     /// Returns two u16 values as (left-hand-side, right-hand-side)
-    pub fn pop_u16_lr(&mut self) -> Result<(UInt, UInt)> {
+    pub fn pop_u16_lr(&mut self) -> Result<(u16, u16)> {
         let b = self.pop_u16()?;
         let a = self.pop_u16()?;
 
@@ -348,7 +348,7 @@ impl VM {
     }
 
     /// Returns two i8 values as (left-hand-side, right-hand-side)
-    pub fn pop_i8_lr(&mut self) -> Result<(SmallInt, SmallInt)> {
+    pub fn pop_i8_lr(&mut self) -> Result<(i8, i8)> {
         let b = self.pop_i8()?;
         let a = self.pop_i8()?;
 
@@ -356,7 +356,7 @@ impl VM {
     }
 
     /// Returns two i16 values as (left-hand-side, right-hand-side)
-    pub fn pop_i16_lr(&mut self) -> Result<(Int, Int)> {
+    pub fn pop_i16_lr(&mut self) -> Result<(i16, i16)> {
         let b = self.pop_i16()?;
         let a = self.pop_i16()?;
 
@@ -677,15 +677,15 @@ impl VM {
         match ty {
             IntegerType::I8 => {
                 let value = self.read_u8(addr)?;
-                let converted = -(value as SmallInt);
+                let converted = -(value as i8);
 
-                self.write_u8(addr, converted as SmallUInt)
+                self.write_u8(addr, converted as u8)
             }
             IntegerType::I16 => {
                 let value = self.read_u16(addr)?;
-                let converted = -(value as Int);
+                let converted = -(value as i16);
 
-                self.write_u16(addr, converted as UInt)
+                self.write_u16(addr, converted as u16)
             }
             IntegerType::U8 => bail!(VMError::NegativeUnsigned),
             IntegerType::U16 => bail!(VMError::NegativeUnsigned),
@@ -757,12 +757,12 @@ impl VM {
                 self.write_u16(addr, value + 1)
             }
             IntegerType::I8 => {
-                let value = self.read_u8(addr)? as SmallInt;
-                self.write_u8(addr, (value + 1) as SmallUInt)
+                let value = self.read_u8(addr)? as i8;
+                self.write_u8(addr, (value + 1) as u8)
             }
             IntegerType::I16 => {
-                let value = self.read_u16(addr)? as Int;
-                self.write_u16(addr, (value + 1) as UInt)
+                let value = self.read_u16(addr)? as i16;
+                self.write_u16(addr, (value + 1) as u16)
             }
         }
     }
@@ -781,12 +781,12 @@ impl VM {
                 self.write_u16(addr, value - 1)
             }
             IntegerType::I8 => {
-                let value = self.read_u8(addr)? as SmallInt;
-                self.write_u8(addr, (value - 1) as SmallUInt)
+                let value = self.read_u8(addr)? as i8;
+                self.write_u8(addr, (value - 1) as u8)
             }
             IntegerType::I16 => {
-                let value = self.read_u16(addr)? as Int;
-                self.write_u16(addr, (value - 1) as UInt)
+                let value = self.read_u16(addr)? as i16;
+                self.write_u16(addr, (value - 1) as u16)
             }
         }
     }
@@ -795,32 +795,32 @@ impl VM {
     pub fn u8_promote(&mut self) -> Result<()> {
         let value = self.pop_u8()?;
 
-        self.push_const_u16(value as UInt)
+        self.push_const_u16(value as u16)
     }
 
     /// Converts a u16 to a u8
     pub fn u16_demote(&mut self) -> Result<()> {
         let value = self.pop_u16()?;
 
-        self.push_const_u8(value as SmallUInt)
+        self.push_const_u8(value as u8)
     }
 
     /// Converts a i8 to a i16
     pub fn i8_promote(&mut self) -> Result<()> {
         let value = self.pop_i8()?;
 
-        self.push_const_i16(value as Int)
+        self.push_const_i16(value as i16)
     }
 
     /// Converts a i16 to a i8
     pub fn i16_demote(&mut self) -> Result<()> {
         let value = self.pop_i16()?;
 
-        self.push_const_i8(value as SmallInt)
+        self.push_const_i8(value as i8)
     }
 
     /// Pushes the given u8 onto the stack
-    pub fn push_const_u8(&mut self, value: SmallUInt) -> Result<()> {
+    pub fn push_const_u8(&mut self, value: u8) -> Result<()> {
         self.sp -= 1;
 
         self.detect_heap_crash()?;
@@ -831,7 +831,7 @@ impl VM {
     }
 
     /// Pushes the given u16 onto the stack
-    pub fn push_const_u16(&mut self, value: UInt) -> Result<()> {
+    pub fn push_const_u16(&mut self, value: u16) -> Result<()> {
         self.sp -= 2;
 
         self.detect_heap_crash()?;
@@ -842,25 +842,25 @@ impl VM {
     }
 
     /// Pushes the given i8 onto the stack
-    pub fn push_const_i8(&mut self, value: SmallInt) -> Result<()> {
+    pub fn push_const_i8(&mut self, value: i8) -> Result<()> {
         self.sp -= 1;
 
         self.detect_heap_crash()?;
 
         let addr = self.sp;
 
-        self.write_u8(addr, value as SmallUInt)
+        self.write_u8(addr, value as u8)
     }
 
     /// Pushes the given i16 onto the stack
-    pub fn push_const_i16(&mut self, value: Int) -> Result<()> {
+    pub fn push_const_i16(&mut self, value: i16) -> Result<()> {
         self.sp -= 2;
 
         self.detect_heap_crash()?;
 
         let addr = self.sp;
 
-        self.write_u16(addr, value as UInt)
+        self.write_u16(addr, value as u16)
     }
 
     /// Loads the value from the given register and pushes it onto the stack
@@ -988,7 +988,7 @@ impl VM {
     }
 
     /// Allocates the given number of bytes in the heap
-    pub fn alloc(&mut self, amount: UInt) -> Result<()> {
+    pub fn alloc(&mut self, amount: u16) -> Result<()> {
         self.alloc_stack.push_front(amount);
         // self.bp += amount;
         self.bp = self.bp
@@ -1304,7 +1304,7 @@ mod tests {
         let mut system = helper::generate_system();
         let mut program = helper::generate_program();
 
-        program.instructions = vec![Instruction::SysCall(123); (UInt::max_value() as usize) + 2];
+        program.instructions = vec![Instruction::SysCall(123); (u16::max_value() as usize) + 2];
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
