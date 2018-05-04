@@ -24,10 +24,10 @@ pub enum Instruction {
     I8Promote,
     I16Demote,
 
-    PushConstU8(SmallUInt),
-    PushConstU16(UInt),
-    PushConstI8(SmallInt),
-    PushConstI16(Int),
+    PushConstU8(u8),
+    PushConstU16(u16),
+    PushConstI8(i8),
+    PushConstI16(i16),
 
     LoadReg(Register),
 
@@ -39,21 +39,21 @@ pub enum Instruction {
     Dup(IntegerType),
     Drop(IntegerType),
 
-    SysCall(UInt),
+    SysCall(u16),
 
     Call(Address),
     Ret,
 
-    Alloc(UInt),
+    Alloc(u16),
     Free,
 
-    Jmp(bool, UInt),
-    Jeq(bool, UInt),
-    Jneq(bool, UInt),
-    Jlt(bool, UInt),
-    JltEq(bool, UInt),
-    Jgt(bool, UInt),
-    JgtEq(bool, UInt),
+    Jmp(bool, u16),
+    Jeq(bool, u16),
+    Jneq(bool, u16),
+    Jlt(bool, u16),
+    JltEq(bool, u16),
+    Jgt(bool, u16),
+    JgtEq(bool, u16),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Rand)]
