@@ -26,13 +26,16 @@ extern crate serde;
 extern crate serde_derive;
 extern crate flate2;
 extern crate rmp_serde as rmps;
+extern crate rustyline;
 
+mod debugger;
 mod instruction;
 mod program;
 mod system;
 pub mod typedef;
 mod vm;
 
+pub use debugger::*;
 pub use instruction::*;
 pub use program::*;
 pub use system::*;

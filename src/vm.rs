@@ -16,7 +16,7 @@ const DEFAULT_MEM_PAGE_COUNT: u8 = 32;
 const MAX_MEM_PAGE_COUNT: u8 = 64;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
-enum Ordering {
+pub(crate) enum Ordering {
     Less,
     Greater,
     Equal,
@@ -26,24 +26,24 @@ enum Ordering {
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct VM {
     /// The program counter
-    pc: Address,
+    pub(crate) pc: Address,
     /// The program data
-    program: Vec<Instruction>,
+    pub(crate) program: Vec<Instruction>,
     /// The stack pointer
-    sp: Address,
+    pub(crate) sp: Address,
     /// The base pointer
-    bp: Address,
+    pub(crate) bp: Address,
     /// The memory allocated and used by the VM
     pub mem: Vec<u8>,
     /// The return value of the VM
     pub return_value: u8,
     /// The stack of calls (return addresses)
-    call_stack: LinkedList<Address>,
+    pub(crate) call_stack: LinkedList<Address>,
     /// The stack of previous allocations
-    alloc_stack: LinkedList<u16>,
+    pub(crate) alloc_stack: LinkedList<u16>,
     /// The Result of the last comparison
-    cmp_res: Option<Ordering>,
-    halted: bool,
+    pub(crate) cmp_res: Option<Ordering>,
+    pub(crate) halted: bool,
 }
 
 impl VM {
@@ -67,7 +67,7 @@ impl VM {
     }
 
     /// Resets the VM to its default state
-    fn reset<T: System>(&mut self, program: &Program) -> Result<()> {
+    pub(crate) fn reset<T: System>(&mut self, program: &Program) -> Result<()> {
         *self = Default::default();
 
         ensure!(
@@ -261,7 +261,8 @@ impl VM {
 
     /// Returns the u16 at the given address
     pub fn read_u16(&mut self, addr: Address) -> Result<u16> {
-        let target_addr = addr.checked_add(1)
+        let target_addr = addr
+            .checked_add(1)
             .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
         self.ensure_valid_mem_addr(target_addr)?;
@@ -275,7 +276,8 @@ impl VM {
 
     /// Writes the given u16 to the given address
     pub fn write_u16(&mut self, addr: Address, value: u16) -> Result<()> {
-        let target_addr = addr.checked_add(1)
+        let target_addr = addr
+            .checked_add(1)
             .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
         self.ensure_valid_mem_addr(target_addr)?;
@@ -373,28 +375,32 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_i16(value)
@@ -408,28 +414,32 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_i16(value)
@@ -443,28 +453,32 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_i16(value)
@@ -509,7 +523,8 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_shr(b as u32)
+                let value = a
+                    .checked_shr(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shr".into(),
                     })?;
@@ -518,7 +533,8 @@ impl VM {
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_shr(b as u32)
+                let value = a
+                    .checked_shr(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shr".into(),
                     })?;
@@ -527,7 +543,8 @@ impl VM {
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_shr(b as u32)
+                let value = a
+                    .checked_shr(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shr".into(),
                     })?;
@@ -536,7 +553,8 @@ impl VM {
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_shr(b as u32)
+                let value = a
+                    .checked_shr(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shr".into(),
                     })?;
@@ -552,7 +570,8 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_shl(b as u32)
+                let value = a
+                    .checked_shl(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shl".into(),
                     })?;
@@ -560,7 +579,8 @@ impl VM {
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_shl(b as u32)
+                let value = a
+                    .checked_shl(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shl".into(),
                     })?;
@@ -568,7 +588,8 @@ impl VM {
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_shl(b as u32)
+                let value = a
+                    .checked_shl(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shl".into(),
                     })?;
@@ -576,7 +597,8 @@ impl VM {
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_shl(b as u32)
+                let value = a
+                    .checked_shl(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shl".into(),
                     })?;
@@ -978,7 +1000,8 @@ impl VM {
 
     /// Returns from a function call
     pub fn ret(&mut self) -> Result<()> {
-        let return_addr = self.call_stack
+        let return_addr = self
+            .call_stack
             .pop_front()
             .ok_or(VMError::ReturnFromEmptyCallStack)?;
 
@@ -991,7 +1014,8 @@ impl VM {
     pub fn alloc(&mut self, amount: u16) -> Result<()> {
         self.alloc_stack.push_front(amount);
         // self.bp += amount;
-        self.bp = self.bp
+        self.bp = self
+            .bp
             .checked_add(amount)
             .ok_or(VMError::InvalidMemoryAddress { addr: self.bp })?;
 
@@ -1002,7 +1026,8 @@ impl VM {
 
     /// Undos the last allocation and frees the memory
     pub fn free(&mut self) -> Result<()> {
-        let amount = self.alloc_stack
+        let amount = self
+            .alloc_stack
             .pop_front()
             .ok_or(VMError::FreeUnallocatedMemory)?;
 
