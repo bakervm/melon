@@ -148,7 +148,7 @@ impl VM {
     }
 
     /// Returns the instruction at the current pc
-    pub fn current_instruction(&mut self) -> Result<Instruction> {
+    pub(crate) fn current_instruction(&mut self) -> Result<Instruction> {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
             Ok(current_instruction.clone())
         } else {
