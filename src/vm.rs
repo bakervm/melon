@@ -1114,7 +1114,8 @@ impl VM {
 mod tests {
     use super::*;
     use instruction::{Instruction, IntegerType};
-    use rand::{self, Rng};
+    use rand::distributions::Standard;
+    use rand::{thread_rng, Rng};
 
     mod helper {
         use instruction::{Instruction, IntegerType, Register};
@@ -1169,7 +1170,7 @@ mod tests {
 
     #[test]
     fn byteorder_check() {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         for _ in 0..300 {
             let mut max = rng.gen_range(10, 300);
@@ -1202,7 +1203,7 @@ mod tests {
         vm.reset::<helper::BogusSystem>(&helper::generate_program())
             .unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         for _ in 0..300 {
             let test_value = rng.gen();
@@ -1218,7 +1219,7 @@ mod tests {
         vm.reset::<helper::BogusSystem>(&helper::generate_program())
             .unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         for _ in 0..300 {
             let test_value = rng.gen();
@@ -1234,7 +1235,7 @@ mod tests {
         vm.reset::<helper::BogusSystem>(&helper::generate_program())
             .unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         for _ in 0..300 {
             let test_value = rng.gen();
@@ -1250,7 +1251,7 @@ mod tests {
         vm.reset::<helper::BogusSystem>(&helper::generate_program())
             .unwrap();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         for _ in 0..300 {
             let test_value = rng.gen();
@@ -2285,9 +2286,9 @@ mod tests {
 
     #[test]
     fn fuzz_instructions() {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
-        let instructions: Vec<Instruction> = rng.gen_iter().take(64_000).collect();
+        let instructions: Vec<Instruction> = rng.sample_iter(&Standard).take(64_000).collect();
 
         let mut vm = VM::default();
         let mut system = helper::generate_system();

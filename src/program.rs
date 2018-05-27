@@ -3,9 +3,7 @@ use instruction::Instruction;
 use rmps::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::File,
-    io::{Read, Write},
-    path::Path,
+    fs::File, io::{Read, Write}, path::Path,
 };
 use typedef::*;
 
@@ -77,19 +75,19 @@ impl Program {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{self, Rng};
+    use rand::{distributions::Standard, thread_rng, Rng};
     use std::fs;
 
     #[test]
     fn save_and_load() {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         let file_name = format!("test.{}", ROM_FILE_EXTENSION);
 
         let program = Program {
             target_version: "bogus_version".into(),
             system_id: "bogus_system".into(),
-            instructions: rng.gen_iter().take(100).collect(),
+            instructions: rng.sample_iter(&Standard).take(100).collect(),
             mem_pages: Some(1),
             entry_point: 0,
         };
