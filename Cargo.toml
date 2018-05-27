@@ -18,7 +18,3 @@ flate2 = "1"
 rand_derive = "^0.3"
 structopt = "^0.2"
 rustyline = "1"
-
-[[bin]]
-name = "melon-dbg"
-path = "dbg/main.rs"
