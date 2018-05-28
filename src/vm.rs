@@ -1038,15 +1038,19 @@ impl VM {
 
     /// Jumps unconditionally in the given direction
     pub fn jmp(&mut self, forward: bool, addr: Address) -> Result<()> {
-        ensure!(addr != (self.pc - 1), VMError::JumpResultedInUnwantedHang);
-
         // Bring the program counter back to the original position
         self.pc -= 1;
 
+        ensure!(addr != self.pc, VMError::JumpResultedInUnwantedHang);
+
         if forward {
-            self.pc += addr;
+            self.pc
+                .checked_add(addr)
+                .ok_or(VMError::InvalidProgramCounter { pc: self.pc })?;;
         } else {
-            self.pc -= addr;
+            self.pc
+                .checked_sub(addr)
+                .ok_or(VMError::InvalidProgramCounter { pc: self.pc })?;;
         }
 
         Ok(())
