@@ -13,18 +13,15 @@ pub struct Debugger {
 
 impl Debugger {
     /// Executes the program inside a debugging environment with the original system context in mind
-    pub fn exec<T: System + Clone>(&mut self, program: &Program, system: T) -> Result<()> {
+    pub fn exec<T: System + Clone>(&mut self, program: &Program, system: &mut T) -> Result<()> {
         let mut debugger_system = DebuggerSystem::new(system);
 
         loop {
             let ret = self.vm.exec(program, &mut debugger_system);
 
             match ret {
-                Ok(val) => {
-                    if val > 0 {
-                        break;
-                    }
-                }
+                Ok(val) if val > 0 => break,
+                Ok(..) => debugger_system.reset(),
                 Err(err) => match err.downcast()? {
                     error @ VMError::WrongTargetVersion { .. } => {
                         eprintln!("{}", error);
@@ -33,9 +30,6 @@ impl Debugger {
                     other => eprintln!("{}", other),
                 },
             }
-
-            debugger_system.reset();
-            self.vm.reset::<T>(program)?;
         }
 
         Ok(())
@@ -56,7 +50,7 @@ struct DebuggerSystem<T: System + Clone> {
 }
 
 impl<T: System + Clone> DebuggerSystem<T> {
-    pub fn new(sub: T) -> DebuggerSystem<T> {
+    pub fn new(sub: &mut T) -> DebuggerSystem<T> {
         DebuggerSystem {
             mode: RunMode::Normal,
             editor: Default::default(),
@@ -72,15 +66,16 @@ impl<T: System + Clone> DebuggerSystem<T> {
 }
 
 impl<T: System + Clone> System for DebuggerSystem<T> {
-    const ID: &'static str = "__DEBUG__";
+    const ID: &'static str = T::ID;
 
-    const MEM_PAGES: u8 = 0;
+    const MEM_PAGES: u8 = T::MEM_PAGES;
 
     fn prepare(&mut self, vm: &mut VM) -> Result<()> {
         self.sub.prepare(vm)?;
 
+        println!();
         println!("VM memory: {} bytes", vm.mem.len());
-        println!("Program memory: {} bytes", vm.program().len() * 4);
+        println!("Program memory: {} bytes", vm.program.len() * 4);
         println!();
 
         Ok(())
@@ -90,7 +85,7 @@ impl<T: System + Clone> System for DebuggerSystem<T> {
         self.sub.pre_cycle(vm)?;
 
         let next_instruction = vm.current_instruction()?;
-        let prompt = format!("[{}] {:?} > ", vm.pc(), next_instruction);
+        let prompt = format!("[{}] {:?} > ", vm.pc, next_instruction);
 
         loop {
             if let RunMode::Run { delay } = self.mode {
@@ -153,14 +148,14 @@ impl<T: System + Clone> System for DebuggerSystem<T> {
                     }
                 }
                 "ps" => {
-                    let sp = vm.sp() as usize;
+                    let sp = vm.sp as usize;
                     let max = vm.mem.len() - 1;
                     println!("Stack {:?}", &vm.mem[sp..max])
                 }
                 "pi" => {
                     println!("Dumping program memory");
                     println!();
-                    let program = vm.program();
+                    let program = vm.program.clone();
                     for (pc, instruction) in program.into_iter().enumerate() {
                         println!("[{}] {:?}", pc, instruction)
                     }
