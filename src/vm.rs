@@ -67,7 +67,7 @@ impl VM {
     }
 
     /// Resets the VM to its default state
-    pub(crate) fn reset<T: System>(&mut self, program: &Program) -> Result<()> {
+    fn reset<T: System>(&mut self, program: &Program) -> Result<()> {
         *self = Default::default();
 
         ensure!(
@@ -125,26 +125,6 @@ impl VM {
     /// Advances the program counter
     fn advance_pc(&mut self) {
         self.pc += 1;
-    }
-
-    /// Returns the current value of the program counter
-    pub fn pc(&mut self) -> Address {
-        self.pc
-    }
-
-    /// Returns the current value of the stack pointer
-    pub fn sp(&mut self) -> Address {
-        self.sp
-    }
-
-    /// Returns the current value of the base pointer
-    pub fn bp(&mut self) -> Address {
-        self.bp
-    }
-
-    /// Returns the full list of instructions for the current program
-    pub fn program(&mut self) -> Vec<Instruction> {
-        self.program.clone()
     }
 
     /// Returns the instruction at the current pc

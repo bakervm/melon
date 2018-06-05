@@ -75,7 +75,7 @@ impl<T: System + Clone> System for DebuggerSystem<T> {
 
         println!();
         println!("VM memory: {} bytes", vm.mem.len());
-        println!("Program memory: {} bytes", vm.program().len() * 4);
+        println!("Program memory: {} bytes", vm.program.len() * 4);
         println!();
 
         Ok(())
@@ -85,7 +85,7 @@ impl<T: System + Clone> System for DebuggerSystem<T> {
         self.sub.pre_cycle(vm)?;
 
         let next_instruction = vm.current_instruction()?;
-        let prompt = format!("[{}] {:?} > ", vm.pc(), next_instruction);
+        let prompt = format!("[{}] {:?} > ", vm.pc, next_instruction);
 
         loop {
             if let RunMode::Run { delay } = self.mode {
@@ -148,14 +148,14 @@ impl<T: System + Clone> System for DebuggerSystem<T> {
                     }
                 }
                 "ps" => {
-                    let sp = vm.sp() as usize;
+                    let sp = vm.sp as usize;
                     let max = vm.mem.len() - 1;
                     println!("Stack {:?}", &vm.mem[sp..max])
                 }
                 "pi" => {
                     println!("Dumping program memory");
                     println!();
-                    let program = vm.program();
+                    let program = vm.program.clone();
                     for (pc, instruction) in program.into_iter().enumerate() {
                         println!("[{}] {:?}", pc, instruction)
                     }
