@@ -13,18 +13,15 @@ pub struct Debugger {
 
 impl Debugger {
     /// Executes the program inside a debugging environment with the original system context in mind
-    pub fn exec<T: System + Clone>(&mut self, program: &Program, system: T) -> Result<()> {
+    pub fn exec<T: System + Clone>(&mut self, program: &Program, system: &mut T) -> Result<()> {
         let mut debugger_system = DebuggerSystem::new(system);
 
         loop {
             let ret = self.vm.exec(program, &mut debugger_system);
 
             match ret {
-                Ok(val) => {
-                    if val > 0 {
-                        break;
-                    }
-                }
+                Ok(val) if val > 0 => break,
+                Ok(..) => {}
                 Err(err) => match err.downcast()? {
                     error @ VMError::WrongTargetVersion { .. } => {
                         eprintln!("{}", error);
@@ -35,7 +32,6 @@ impl Debugger {
             }
 
             debugger_system.reset();
-            self.vm.reset::<T>(program)?;
         }
 
         Ok(())
@@ -56,7 +52,7 @@ struct DebuggerSystem<T: System + Clone> {
 }
 
 impl<T: System + Clone> DebuggerSystem<T> {
-    pub fn new(sub: T) -> DebuggerSystem<T> {
+    pub fn new(sub: &mut T) -> DebuggerSystem<T> {
         DebuggerSystem {
             mode: RunMode::Normal,
             editor: Default::default(),
@@ -72,9 +68,9 @@ impl<T: System + Clone> DebuggerSystem<T> {
 }
 
 impl<T: System + Clone> System for DebuggerSystem<T> {
-    const ID: &'static str = "__DEBUG__";
+    const ID: &'static str = T::ID;
 
-    const MEM_PAGES: u8 = 0;
+    const MEM_PAGES: u8 = T::MEM_PAGES;
 
     fn prepare(&mut self, vm: &mut VM) -> Result<()> {
         self.sub.prepare(vm)?;
