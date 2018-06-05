@@ -21,7 +21,7 @@ impl Debugger {
 
             match ret {
                 Ok(val) if val > 0 => break,
-                Ok(..) => {}
+                Ok(..) => debugger_system.reset(),
                 Err(err) => match err.downcast()? {
                     error @ VMError::WrongTargetVersion { .. } => {
                         eprintln!("{}", error);
@@ -30,8 +30,6 @@ impl Debugger {
                     other => eprintln!("{}", other),
                 },
             }
-
-            debugger_system.reset();
         }
 
         Ok(())
@@ -75,6 +73,7 @@ impl<T: System + Clone> System for DebuggerSystem<T> {
     fn prepare(&mut self, vm: &mut VM) -> Result<()> {
         self.sub.prepare(vm)?;
 
+        println!();
         println!("VM memory: {} bytes", vm.mem.len());
         println!("Program memory: {} bytes", vm.program().len() * 4);
         println!();
