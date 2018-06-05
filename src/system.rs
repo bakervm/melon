@@ -90,7 +90,7 @@ use vm::VM;
 /// Following the basic principles in this example, you are able to build any retro style computing
 /// system you want.
 ///
-pub trait System: Send {
+pub trait System {
     /// A unique ID to identify the System
     const ID: &'static str;
 
