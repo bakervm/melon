@@ -17,11 +17,10 @@ script:
 - cargo clean
 - cargo build
 - cargo test
+- RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin --git https://github.com/xd009642/tarpaulin --branch develop || true
 
 after_success: |
   if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
-    bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/develop/travis-install.sh)
-
     # Uncomment the following two lines create and upload a report for codecov.io
     cargo tarpaulin --out Xml
     bash <(curl -s https://codecov.io/bash)

@@ -13,7 +13,7 @@ pub struct Debugger {
 
 impl Debugger {
     /// Executes the program inside a debugging environment with the original system context in mind
-    pub fn exec<T: System + Clone>(&mut self, program: &Program, system: &mut T) -> Result<()> {
+    pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<()> {
         let mut debugger_system = DebuggerSystem::new(system);
 
         loop {
@@ -21,7 +21,7 @@ impl Debugger {
 
             match ret {
                 Ok(val) if val > 0 => break,
-                Ok(..) => debugger_system.reset(),
+                Ok(..) => {}
                 Err(err) => match err.downcast()? {
                     error @ VMError::WrongTargetVersion { .. } => {
                         eprintln!("{}", error);
@@ -42,30 +42,23 @@ enum RunMode {
     Normal,
 }
 
-struct DebuggerSystem<T: System + Clone> {
+struct DebuggerSystem<'a, T: 'a + System> {
     mode: RunMode,
     editor: Editor<()>,
-    first_sub: T,
-    sub: T,
+    sub: &'a mut T,
 }
 
-impl<T: System + Clone> DebuggerSystem<T> {
+impl<'a, T: System> DebuggerSystem<'a, T> {
     pub fn new(sub: &mut T) -> DebuggerSystem<T> {
         DebuggerSystem {
             mode: RunMode::Normal,
             editor: Default::default(),
-            first_sub: sub.clone(),
-            sub: sub.clone(),
+            sub: sub,
         }
-    }
-
-    pub fn reset(&mut self) {
-        self.mode = RunMode::Normal;
-        self.sub = self.first_sub.clone();
     }
 }
 
-impl<T: System + Clone> System for DebuggerSystem<T> {
+impl<'a, T: System> System for DebuggerSystem<'a, T> {
     const ID: &'static str = T::ID;
 
     const MEM_PAGES: u8 = T::MEM_PAGES;
@@ -183,6 +176,8 @@ impl<T: System + Clone> System for DebuggerSystem<T> {
 
     fn finish(&mut self, vm: &mut VM) -> Result<()> {
         self.sub.finish(vm)?;
+
+        self.mode = RunMode::Normal;
 
         Ok(())
     }
