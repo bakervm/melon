@@ -2228,7 +2228,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn heap_crash() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
@@ -2240,7 +2239,7 @@ mod tests {
             Instruction::Jmp(false, 1),
         ];
 
-        vm.exec(&program, &mut system).unwrap();
+        vm.exec(&program, &mut system).unwrap_err();
     }
 
     #[test]
