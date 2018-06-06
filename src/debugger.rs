@@ -16,21 +16,7 @@ impl Debugger {
     pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<()> {
         let mut debugger_system = DebuggerSystem::new(system);
 
-        loop {
-            let ret = self.vm.exec(program, &mut debugger_system);
-
-            match ret {
-                Ok(val) if val > 0 => break,
-                Ok(..) => {}
-                Err(err) => match err.downcast()? {
-                    error @ VMError::WrongTargetVersion { .. } => {
-                        eprintln!("{}", error);
-                        break;
-                    }
-                    other => eprintln!("{}", other),
-                },
-            }
-        }
+        self.vm.exec(program, &mut debugger_system)?;
 
         Ok(())
     }
