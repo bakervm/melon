@@ -52,3 +52,25 @@ fn main() {
         .exec(&program, &mut sys)
         .unwrap_or_else(|e| panic!("{}", e));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn random_crash() {
+        let mut rng = thread_rng();
+
+        let mut sys = MyPerfectSystem::new();
+
+        let program = Program {
+            target_version: melon::VERSION.into(),
+            system_id: MyPerfectSystem::ID.into(),
+            instructions: rng.sample_iter(&Standard).take(LIMIT).collect(),
+            mem_pages: None,
+            entry_point: 0,
+        };
+
+        VM::default().exec(&program, &mut sys).unwrap_err();
+    }
+}
