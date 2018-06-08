@@ -25,7 +25,7 @@ fn create() {
     let mut virt = VM::default();
     virt.exec(
         &Program {
-            target_version: env!("CARGO_PKG_VERSION").into(),
+            target_version: melon::VERSION.into(),
             system_id: TextConsole::ID.into(),
             instructions: Vec::new(),
             mem_pages: Some(20),
@@ -42,7 +42,7 @@ fn wrong_system_id() {
 
     virt.exec(
         &Program {
-            target_version: env!("CARGO_PKG_VERSION").into(),
+            target_version: melon::VERSION.into(),
             system_id: "__PIXEL_DISPLAY__".into(),
             instructions: Vec::new(),
             mem_pages: Some(20),

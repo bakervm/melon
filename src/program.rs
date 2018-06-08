@@ -2,9 +2,9 @@ use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use instruction::Instruction;
 use rmps::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::File, io::{Read, Write}, path::Path,
-};
+use std::{fs::File,
+          io::{Read, Write},
+          path::Path};
 use typedef::*;
 
 /// The container for a program
