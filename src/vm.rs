@@ -23,7 +23,7 @@ pub(crate) enum Ordering {
 }
 
 /// The state of the VM
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct VM {
     /// The program counter
     pub(crate) pc: Address,
@@ -79,9 +79,9 @@ impl VM {
         );
 
         ensure!(
-            program.target_version == env!("CARGO_PKG_VERSION"),
+            program.target_version == ::VERSION,
             VMError::WrongTargetVersion {
-                runtime: env!("CARGO_PKG_VERSION").into(),
+                runtime: ::VERSION.into(),
                 program: program.target_version.clone(),
             }
         );
@@ -174,7 +174,7 @@ impl VM {
             Instruction::Drop(ty) => self.drop(ty)?,
             Instruction::SysCall(0) => self.halt(),
             Instruction::SysCall(signal) => system.system_call(self, signal)?,
-            Instruction::Call(addr) => self.call(addr),
+            Instruction::Call(addr) => self.call(addr)?,
             Instruction::Ret => self.ret()?,
             Instruction::Alloc(amount) => self.alloc(amount)?,
             Instruction::Free => self.free()?,
@@ -657,13 +657,17 @@ impl VM {
         match ty {
             IntegerType::I8 => {
                 let value = self.read_u8(addr)?;
-                let converted = -(value as i8);
+                let converted = (value as i8)
+                    .checked_neg()
+                    .ok_or(VMError::ArithmeticOverflow { op: "neg".into() })?;
 
                 self.write_u8(addr, converted as u8)
             }
             IntegerType::I16 => {
                 let value = self.read_u16(addr)?;
-                let converted = -(value as i16);
+                let converted = (value as i16)
+                    .checked_neg()
+                    .ok_or(VMError::ArithmeticOverflow { op: "neg".into() })?;
 
                 self.write_u16(addr, converted as u16)
             }
@@ -730,19 +734,41 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let value = self.read_u8(addr)?;
-                self.write_u8(addr, value + 1)
+                self.write_u8(
+                    addr,
+                    value
+                        .checked_add(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "inc".into() })?,
+                )
             }
             IntegerType::U16 => {
                 let value = self.read_u16(addr)?;
-                self.write_u16(addr, value + 1)
+                self.write_u16(
+                    addr,
+                    value
+                        .checked_add(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "inc".into() })?,
+                )
             }
             IntegerType::I8 => {
                 let value = self.read_u8(addr)? as i8;
-                self.write_u8(addr, (value + 1) as u8)
+                self.write_u8(
+                    addr,
+                    value
+                        .checked_add(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "inc".into() })?
+                        as u8,
+                )
             }
             IntegerType::I16 => {
                 let value = self.read_u16(addr)? as i16;
-                self.write_u16(addr, (value + 1) as u16)
+                self.write_u16(
+                    addr,
+                    value
+                        .checked_add(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "inc".into() })?
+                        as u16,
+                )
             }
         }
     }
@@ -754,19 +780,41 @@ impl VM {
         match ty {
             IntegerType::U8 => {
                 let value = self.read_u8(addr)?;
-                self.write_u8(addr, value - 1)
+                self.write_u8(
+                    addr,
+                    value
+                        .checked_sub(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "dec".into() })?,
+                )
             }
             IntegerType::U16 => {
                 let value = self.read_u16(addr)?;
-                self.write_u16(addr, value - 1)
+                self.write_u16(
+                    addr,
+                    value
+                        .checked_sub(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "dec".into() })?,
+                )
             }
             IntegerType::I8 => {
                 let value = self.read_u8(addr)? as i8;
-                self.write_u8(addr, (value - 1) as u8)
+                self.write_u8(
+                    addr,
+                    value
+                        .checked_sub(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "dec".into() })?
+                        as u8,
+                )
             }
             IntegerType::I16 => {
                 let value = self.read_u16(addr)? as i16;
-                self.write_u16(addr, (value - 1) as u16)
+                self.write_u16(
+                    addr,
+                    value
+                        .checked_sub(1)
+                        .ok_or(VMError::ArithmeticOverflow { op: "dec".into() })?
+                        as u16,
+                )
             }
         }
     }
@@ -950,10 +998,14 @@ impl VM {
     }
 
     /// Calls the function at the given address
-    pub fn call(&mut self, addr: Address) {
+    pub fn call(&mut self, addr: Address) -> Result<()> {
+        ensure!(self.pc - 1 != addr, VMError::CallResultedInUnwantedHang);
+
         let call = self.pc;
         self.call_stack.push_front(call);
         self.pc = addr;
+
+        Ok(())
     }
 
     /// Returns from a function call
@@ -1098,7 +1150,7 @@ mod tests {
 
         pub fn generate_program() -> Program {
             Program {
-                target_version: env!("CARGO_PKG_VERSION").to_owned(),
+                target_version: ::VERSION.to_owned(),
                 system_id: BogusSystem::ID.to_owned(),
                 instructions: generate_instructions(),
                 mem_pages: Some(63),

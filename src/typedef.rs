@@ -53,4 +53,6 @@ pub enum VMError {
     FreeUnallocatedMemory,
     #[fail(display = "jump resulted in an unwanted hang of the program")]
     JumpResultedInUnwantedHang,
+    #[fail(display = "call resulted in an unwanted hang of the program")]
+    CallResultedInUnwantedHang,
 }

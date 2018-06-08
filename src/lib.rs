@@ -22,6 +22,7 @@ extern crate rand;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate colored;
 extern crate flate2;
 extern crate rmp_serde as rmps;
 extern crate rustyline;
@@ -38,3 +39,6 @@ pub use instruction::*;
 pub use program::*;
 pub use system::*;
 pub use vm::*;
+
+/// The current version of the melon crate
+pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");

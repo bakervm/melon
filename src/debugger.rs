@@ -1,3 +1,4 @@
+use colored::*;
 use program::Program;
 use rustyline::Editor;
 use std::{thread, time::Duration};
@@ -13,26 +14,10 @@ pub struct Debugger {
 
 impl Debugger {
     /// Executes the program inside a debugging environment with the original system context in mind
-    pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<()> {
+    pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<u8> {
         let mut debugger_system = DebuggerSystem::new(system);
 
-        loop {
-            let ret = self.vm.exec(program, &mut debugger_system);
-
-            match ret {
-                Ok(val) if val > 0 => break,
-                Ok(..) => {}
-                Err(err) => match err.downcast()? {
-                    error @ VMError::WrongTargetVersion { .. } => {
-                        eprintln!("{}", error);
-                        break;
-                    }
-                    other => eprintln!("{}", other),
-                },
-            }
-        }
-
-        Ok(())
+        self.vm.exec(program, &mut debugger_system)
     }
 }
 
@@ -67,8 +52,12 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
         self.sub.prepare(vm)?;
 
         println!();
-        println!("VM memory: {} bytes", vm.mem.len());
-        println!("Program memory: {} bytes", vm.program.len() * 4);
+
+        let mem_line = format!("VM memory: {} bytes", vm.mem.len());
+        println!("{}", mem_line.cyan());
+
+        let prog_line = format!("Program memory: {} bytes", vm.program.len() * 4);
+        println!("{}", prog_line.cyan());
         println!();
 
         Ok(())
@@ -78,7 +67,11 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
         self.sub.pre_cycle(vm)?;
 
         let next_instruction = vm.current_instruction()?;
-        let prompt = format!("[{}] {:?} > ", vm.pc, next_instruction);
+        let prompt = format!(
+            "[{}] {} > ",
+            format!("{:04X}", vm.pc).red(),
+            format!("{:?}", next_instruction).green()
+        );
 
         loop {
             if let RunMode::Run { delay } = self.mode {
@@ -143,7 +136,7 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
                 "ps" => {
                     let sp = vm.sp as usize;
                     let max = vm.mem.len() - 1;
-                    println!("Stack {:?}", &vm.mem[sp..max])
+                    println!("Stack {:X?}", &vm.mem[sp..max])
                 }
                 "pi" => {
                     println!("Dumping program memory");
