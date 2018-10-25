@@ -41,4 +41,4 @@ pub use system::*;
 pub use vm::*;
 
 /// The current version of the melon crate
-pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");

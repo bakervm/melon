@@ -2,9 +2,11 @@ use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use instruction::Instruction;
 use rmps::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
-use std::{fs::File,
-          io::{Read, Write},
-          path::Path};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+};
 use typedef::*;
 
 /// The container for a program
@@ -30,13 +32,13 @@ impl Program {
         let mut gz_buf = Vec::new();
         file.read_to_end(&mut gz_buf)?;
 
-        let res = Self::from_vec(gz_buf)?;
+        let res = Self::from_slice(&gz_buf)?;
 
         Ok(res)
     }
 
     /// Decodes a program from MsgPack encoded and gzipped image data
-    pub fn from_vec(vec: Vec<u8>) -> Result<Program> {
+    pub fn from_slice(vec: &[u8]) -> Result<Program> {
         let mut decoder = GzDecoder::new(&vec[..]);
         let mut msgpack_buf = Vec::new();
         decoder.read_to_end(&mut msgpack_buf)?;
