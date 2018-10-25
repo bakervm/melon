@@ -37,7 +37,7 @@ impl<'a, T: System> DebuggerSystem<'a, T> {
     pub fn new(sub: &mut T) -> DebuggerSystem<T> {
         DebuggerSystem {
             mode: RunMode::Normal,
-            editor: Default::default(),
+            editor: Editor::<()>::new(),
             sub: sub,
         }
     }
@@ -91,7 +91,7 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
                 }
             };
 
-            self.editor.add_history_entry(&input.trim());
+            self.editor.add_history_entry(input.trim());
 
             match input.trim() {
                 "help" | "h" => {
