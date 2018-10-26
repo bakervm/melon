@@ -36,7 +36,6 @@ fn create() {
 }
 
 #[test]
-#[should_panic]
 fn wrong_system_id() {
     let mut virt = VM::default();
 
@@ -49,7 +48,7 @@ fn wrong_system_id() {
             entry_point: 0,
         },
         &mut TextConsole::new(),
-    ).unwrap();
+    ).unwrap_err();
 }
 
 #[test]

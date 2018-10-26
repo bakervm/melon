@@ -143,7 +143,12 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
                     println!();
                     let program = vm.program.clone();
                     for (pc, instruction) in program.into_iter().enumerate() {
-                        println!("[{}] {:?}", pc, instruction)
+                        let prompt = format!(
+                            "[{}] {}",
+                            format!("{:04X}", pc).red(),
+                            format!("{:?}", instruction).green()
+                        );
+                        println!("{}", prompt)
                     }
                 }
                 other if other.is_empty() => {
