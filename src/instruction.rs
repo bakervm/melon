@@ -1,7 +1,8 @@
 #![allow(missing_docs)]
 
 use rand::{
-    distributions::{Distribution, Standard}, Rng,
+    distributions::{Distribution, Standard},
+    Rng,
 };
 use typedef::*;
 

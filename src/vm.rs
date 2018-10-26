@@ -15,6 +15,7 @@ const DEFAULT_MEM_PAGE_COUNT: u8 = 32;
 /// The maimum number of pages that can be allocated by the VM
 const MAX_MEM_PAGE_COUNT: u8 = 64;
 
+#[doc(hidden)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub(crate) enum Ordering {
     Less,
@@ -143,20 +144,20 @@ impl VM {
         system: &mut T,
     ) -> Result<()> {
         match instruction {
-            Instruction::Add(ty) => self.add(ty)?,
-            Instruction::Sub(ty) => self.sub(ty)?,
-            Instruction::Mul(ty) => self.mul(ty)?,
-            Instruction::Div(ty) => self.div(ty)?,
-            Instruction::Shr(ty) => self.shr(ty)?,
-            Instruction::Shl(ty) => self.shl(ty)?,
-            Instruction::And(ty) => self.and(ty)?,
-            Instruction::Or(ty) => self.or(ty)?,
-            Instruction::Xor(ty) => self.xor(ty)?,
-            Instruction::Not(ty) => self.not(ty)?,
-            Instruction::Neg(ty) => self.neg(ty)?,
-            Instruction::Cmp(ty) => self.cmp(ty)?,
-            Instruction::Inc(ty) => self.inc(ty)?,
-            Instruction::Dec(ty) => self.dec(ty)?,
+            Instruction::Add(ty) => self.add(&ty)?,
+            Instruction::Sub(ty) => self.sub(&ty)?,
+            Instruction::Mul(ty) => self.mul(&ty)?,
+            Instruction::Div(ty) => self.div(&ty)?,
+            Instruction::Shr(ty) => self.shr(&ty)?,
+            Instruction::Shl(ty) => self.shl(&ty)?,
+            Instruction::And(ty) => self.and(&ty)?,
+            Instruction::Or(ty) => self.or(&ty)?,
+            Instruction::Xor(ty) => self.xor(&ty)?,
+            Instruction::Not(ty) => self.not(&ty)?,
+            Instruction::Neg(ty) => self.neg(&ty)?,
+            Instruction::Cmp(ty) => self.cmp(&ty)?,
+            Instruction::Inc(ty) => self.inc(&ty)?,
+            Instruction::Dec(ty) => self.dec(&ty)?,
             Instruction::U8Promote => self.u8_promote()?,
             Instruction::U16Demote => self.u16_demote()?,
             Instruction::I8Promote => self.i8_promote()?,
@@ -165,13 +166,13 @@ impl VM {
             Instruction::PushConstU16(value) => self.push_const_u16(value)?,
             Instruction::PushConstI8(value) => self.push_const_i8(value)?,
             Instruction::PushConstI16(value) => self.push_const_i16(value)?,
-            Instruction::LoadReg(reg) => self.load_reg(reg)?,
-            Instruction::Load(ty, addr) => self.load(ty, addr)?,
-            Instruction::LoadIndirect(ty) => self.load_indirect(ty)?,
-            Instruction::Store(ty, addr) => self.store(ty, addr)?,
-            Instruction::StoreIndirect(ty) => self.store_indirect(ty)?,
-            Instruction::Dup(ty) => self.dup(ty)?,
-            Instruction::Drop(ty) => self.drop(ty)?,
+            Instruction::LoadReg(reg) => self.load_reg(&reg)?,
+            Instruction::Load(ty, addr) => self.load(&ty, addr)?,
+            Instruction::LoadIndirect(ty) => self.load_indirect(&ty)?,
+            Instruction::Store(ty, addr) => self.store(&ty, addr)?,
+            Instruction::StoreIndirect(ty) => self.store_indirect(&ty)?,
+            Instruction::Dup(ty) => self.dup(&ty)?,
+            Instruction::Drop(ty) => self.drop(&ty)?,
             Instruction::SysCall(0) => self.halt(),
             Instruction::SysCall(signal) => system.system_call(self, signal)?,
             Instruction::Call(addr) => self.call(addr)?,
@@ -241,7 +242,8 @@ impl VM {
 
     /// Returns the u16 at the given address
     pub fn read_u16(&mut self, addr: Address) -> Result<u16> {
-        let target_addr = addr.checked_add(1)
+        let target_addr = addr
+            .checked_add(1)
             .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
         self.ensure_valid_mem_addr(target_addr)?;
@@ -255,7 +257,8 @@ impl VM {
 
     /// Writes the given u16 to the given address
     pub fn write_u16(&mut self, addr: Address, value: u16) -> Result<()> {
-        let target_addr = addr.checked_add(1)
+        let target_addr = addr
+            .checked_add(1)
             .ok_or(VMError::InvalidMemoryAddress { addr })?;
 
         self.ensure_valid_mem_addr(target_addr)?;
@@ -349,32 +352,36 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *adds* them together and pushes the result
     /// back on the stack
-    pub fn add(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn add(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_add(b)
+                let value = a
+                    .checked_add(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "add".into() })?;
 
                 self.push_const_i16(value)
@@ -384,32 +391,36 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *subtracts* the second from the first and
     /// pushes the result back on the stack
-    pub fn sub(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn sub(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_sub(b)
+                let value = a
+                    .checked_sub(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "sub".into() })?;
 
                 self.push_const_i16(value)
@@ -419,32 +430,36 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *multiplies* them and pushes the result
     /// back on the stack
-    pub fn mul(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn mul(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_i8(value)
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_mul(b)
+                let value = a
+                    .checked_mul(b)
                     .ok_or(VMError::ArithmeticOverflow { op: "mul".into() })?;
 
                 self.push_const_i16(value)
@@ -454,7 +469,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *divides* the first through the second and
     /// pushes the result back on the stack
-    pub fn div(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn div(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -485,29 +500,32 @@ impl VM {
 
     /// Pops two values of the given type off the stack, uses the second one to shift the bits
     /// of the first one to the *right* and pushes the result back onto the stack
-    pub fn shr(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn shr(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_shr(b as u32)
-                    .ok_or(VMError::UnableToApplyInstruction {
-                        instr: "shr".into(),
-                    })?;
+                let value =
+                    a.checked_shr(u32::from(b))
+                        .ok_or(VMError::UnableToApplyInstruction {
+                            instr: "shr".into(),
+                        })?;
 
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_shr(b as u32)
-                    .ok_or(VMError::UnableToApplyInstruction {
-                        instr: "shr".into(),
-                    })?;
+                let value =
+                    a.checked_shr(u32::from(b))
+                        .ok_or(VMError::UnableToApplyInstruction {
+                            instr: "shr".into(),
+                        })?;
 
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_shr(b as u32)
+                let value = a
+                    .checked_shr(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shr".into(),
                     })?;
@@ -516,7 +534,8 @@ impl VM {
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_shr(b as u32)
+                let value = a
+                    .checked_shr(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shr".into(),
                     })?;
@@ -528,27 +547,30 @@ impl VM {
 
     /// Pops two values of the given type off the stack, uses the second one to shift the bits
     /// of the first one to the *left* and pushes the result back onto the stack
-    pub fn shl(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn shl(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
-                let value = a.checked_shl(b as u32)
-                    .ok_or(VMError::UnableToApplyInstruction {
-                        instr: "shl".into(),
-                    })?;
+                let value =
+                    a.checked_shl(u32::from(b))
+                        .ok_or(VMError::UnableToApplyInstruction {
+                            instr: "shl".into(),
+                        })?;
                 self.push_const_u8(value)
             }
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
-                let value = a.checked_shl(b as u32)
-                    .ok_or(VMError::UnableToApplyInstruction {
-                        instr: "shl".into(),
-                    })?;
+                let value =
+                    a.checked_shl(u32::from(b))
+                        .ok_or(VMError::UnableToApplyInstruction {
+                            instr: "shl".into(),
+                        })?;
                 self.push_const_u16(value)
             }
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
-                let value = a.checked_shl(b as u32)
+                let value = a
+                    .checked_shl(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shl".into(),
                     })?;
@@ -556,7 +578,8 @@ impl VM {
             }
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
-                let value = a.checked_shl(b as u32)
+                let value = a
+                    .checked_shl(b as u32)
                     .ok_or(VMError::UnableToApplyInstruction {
                         instr: "shl".into(),
                     })?;
@@ -567,7 +590,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, applies a *bitwise and* to both and
     /// pushes the result back onto the stack
-    pub fn and(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn and(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -590,7 +613,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, applies a *bitwise or* to both and
     /// pushes the result back onto the stack
-    pub fn or(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn or(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -613,7 +636,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, applies a *bitwise or* to both and
     /// pushes the result back onto the stack
-    pub fn xor(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn xor(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -635,7 +658,7 @@ impl VM {
     }
 
     /// Applies a *bitwise not* operation to the top stack value
-    pub fn not(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn not(&mut self, ty: &IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -651,7 +674,7 @@ impl VM {
     }
 
     /// Applies a *negation* on the tio stack value
-    pub fn neg(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn neg(&mut self, ty: &IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -678,12 +701,12 @@ impl VM {
 
     /// *Compares* the top two values of the stack by applying a subtraction on them and saving the
     /// result in the cmp register
-    pub fn cmp(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn cmp(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
 
-                self.cmp_res = Some(Self::do_compare(a, b));
+                self.cmp_res = Some(Self::do_compare(&a, &b));
 
                 self.push_const_u8(a)?;
                 self.push_const_u8(b)?;
@@ -691,7 +714,7 @@ impl VM {
             IntegerType::U16 => {
                 let (a, b) = self.pop_u16_lr()?;
 
-                self.cmp_res = Some(Self::do_compare(a, b));
+                self.cmp_res = Some(Self::do_compare(&a, &b));
 
                 self.push_const_u16(a)?;
                 self.push_const_u16(b)?;
@@ -699,7 +722,7 @@ impl VM {
             IntegerType::I8 => {
                 let (a, b) = self.pop_i8_lr()?;
 
-                self.cmp_res = Some(Self::do_compare(a, b));
+                self.cmp_res = Some(Self::do_compare(&a, &b));
 
                 self.push_const_i8(a)?;
                 self.push_const_i8(b)?;
@@ -707,7 +730,7 @@ impl VM {
             IntegerType::I16 => {
                 let (a, b) = self.pop_i16_lr()?;
 
-                self.cmp_res = Some(Self::do_compare(a, b));
+                self.cmp_res = Some(Self::do_compare(&a, &b));
 
                 self.push_const_i16(a)?;
                 self.push_const_i16(b)?;
@@ -717,7 +740,7 @@ impl VM {
         Ok(())
     }
 
-    fn do_compare<T: Ord>(num_a: T, num_b: T) -> Ordering {
+    fn do_compare<T: Ord>(num_a: &T, num_b: &T) -> Ordering {
         if num_a < num_b {
             Ordering::Less
         } else if num_a > num_b {
@@ -728,7 +751,7 @@ impl VM {
     }
 
     /// *Increments* the top stack value
-    pub fn inc(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn inc(&mut self, ty: &IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -774,7 +797,7 @@ impl VM {
     }
 
     /// *Decrements* the top stack value
-    pub fn dec(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn dec(&mut self, ty: &IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -823,7 +846,7 @@ impl VM {
     pub fn u8_promote(&mut self) -> Result<()> {
         let value = self.pop_u8()?;
 
-        self.push_const_u16(value as u16)
+        self.push_const_u16(u16::from(value))
     }
 
     /// Converts a u16 to a u8
@@ -837,7 +860,7 @@ impl VM {
     pub fn i8_promote(&mut self) -> Result<()> {
         let value = self.pop_i8()?;
 
-        self.push_const_i16(value as i16)
+        self.push_const_i16(i16::from(value))
     }
 
     /// Converts a i16 to a i8
@@ -892,7 +915,7 @@ impl VM {
     }
 
     /// Loads the value from the given register and pushes it onto the stack
-    pub fn load_reg(&mut self, reg: Register) -> Result<()> {
+    pub fn load_reg(&mut self, reg: &Register) -> Result<()> {
         let ptr = match reg {
             Register::StackPtr => self.sp,
             Register::BasePtr => self.bp,
@@ -902,7 +925,7 @@ impl VM {
     }
 
     /// Loads the value from the given address and pushes it to the stack
-    pub fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
+    pub fn load(&mut self, ty: &IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.read_u8(addr)?;
@@ -918,7 +941,7 @@ impl VM {
     }
 
     /// Like *load* but takes the address off the stack before storing
-    pub fn load_indirect(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn load_indirect(&mut self, ty: &IntegerType) -> Result<()> {
         let addr = self.pop_u16()?;
         self.load(ty, addr)?;
 
@@ -926,7 +949,7 @@ impl VM {
     }
 
     /// Takes the top value off the stack and stores it at the given address
-    pub fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
+    pub fn store(&mut self, ty: &IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.pop_u8()?;
@@ -942,7 +965,7 @@ impl VM {
     }
 
     /// Like *store* but takes the address off the stack before storing
-    pub fn store_indirect(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn store_indirect(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.pop_u8()?;
@@ -960,7 +983,7 @@ impl VM {
     }
 
     /// Duplicates the top stack value and pushes it onto the stack
-    pub fn dup(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn dup(&mut self, ty: &IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -978,7 +1001,7 @@ impl VM {
     }
 
     /// Discards the top stack value
-    pub fn drop(&mut self, ty: IntegerType) -> Result<()> {
+    pub fn drop(&mut self, ty: &IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 self.pop_u8()?;
@@ -1010,7 +1033,8 @@ impl VM {
 
     /// Returns from a function call
     pub fn ret(&mut self) -> Result<()> {
-        let return_addr = self.call_stack
+        let return_addr = self
+            .call_stack
             .pop_front()
             .ok_or(VMError::ReturnFromEmptyCallStack)?;
 
@@ -1023,7 +1047,8 @@ impl VM {
     pub fn alloc(&mut self, amount: u16) -> Result<()> {
         self.alloc_stack.push_front(amount);
         // self.bp += amount;
-        self.bp = self.bp
+        self.bp = self
+            .bp
             .checked_add(amount)
             .ok_or(VMError::InvalidMemoryAddress { addr: self.bp })?;
 
@@ -1034,7 +1059,8 @@ impl VM {
 
     /// Undos the last allocation and frees the memory
     pub fn free(&mut self) -> Result<()> {
-        let amount = self.alloc_stack
+        let amount = self
+            .alloc_stack
             .pop_front()
             .ok_or(VMError::FreeUnallocatedMemory)?;
 
@@ -1051,11 +1077,13 @@ impl VM {
         self.pc -= 1;
 
         if forward {
-            self.pc = self.pc
+            self.pc = self
+                .pc
                 .checked_add(addr)
                 .ok_or(VMError::InvalidProgramCounter { pc: self.pc })?;
         } else {
-            self.pc = self.pc
+            self.pc = self
+                .pc
                 .checked_sub(addr)
                 .ok_or(VMError::InvalidProgramCounter { pc: self.pc })?;
         }
@@ -1666,24 +1694,24 @@ mod tests {
         let mut program = helper::generate_program();
 
         program.instructions = vec![
-            Instruction::PushConstU8(0b01010101),
+            Instruction::PushConstU8(0b0101_0101),
             Instruction::PushConstU8(0xFF),
             Instruction::And(IntegerType::U8),
         ];
 
         vm.exec(&program, &mut system).unwrap();
 
-        assert_eq!(vm.pop_u8().unwrap(), 0b01010101);
+        assert_eq!(vm.pop_u8().unwrap(), 0b0101_0101);
 
         program.instructions = vec![
-            Instruction::PushConstU16(0b1010101010101010),
+            Instruction::PushConstU16(0b1010_1010_1010_1010),
             Instruction::PushConstU16(0xFFFF),
             Instruction::And(IntegerType::U16),
         ];
 
         vm.exec(&program, &mut system).unwrap();
 
-        assert_eq!(vm.pop_u16().unwrap(), 0b1010101010101010);
+        assert_eq!(vm.pop_u16().unwrap(), 0b1010_1010_1010_1010);
 
         program.instructions = vec![
             Instruction::PushConstI8(0b0101),
@@ -1696,14 +1724,14 @@ mod tests {
         assert_eq!(vm.pop_i8().unwrap(), 0b0101);
 
         program.instructions = vec![
-            Instruction::PushConstI16(0b01010101),
+            Instruction::PushConstI16(0b0101_0101),
             Instruction::PushConstI16(0xFF),
             Instruction::And(IntegerType::I16),
         ];
 
         vm.exec(&program, &mut system).unwrap();
 
-        assert_eq!(vm.pop_i16().unwrap(), 0b01010101);
+        assert_eq!(vm.pop_i16().unwrap(), 0b0101_0101);
     }
 
     #[test]

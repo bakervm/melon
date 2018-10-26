@@ -12,9 +12,17 @@ pub const ROM_FILE_EXTENSION: &str = "rom";
 #[derive(Fail, Debug)]
 #[allow(missing_docs)]
 pub enum VMError {
-    #[fail(display = "wrong system ID. Runtime: {:?} Program: {:?}", runtime, program)]
+    #[fail(
+        display = "wrong system ID. Runtime: {:?} Program: {:?}",
+        runtime,
+        program
+    )]
     WrongSystemId { program: String, runtime: String },
-    #[fail(display = "wrong target version. Runtime: {:?} Program: {:?}", runtime, program)]
+    #[fail(
+        display = "wrong target version. Runtime: {:?} Program: {:?}",
+        runtime,
+        program
+    )]
     WrongTargetVersion { program: String, runtime: String },
     #[fail(
         display = "requested memory too big. Requested pages: {}. Maximum number of pages: {}",
@@ -24,7 +32,10 @@ pub enum VMError {
     RequestedMemoryTooBig { requested: u8, max: u8 },
     #[fail(display = "requested memory too small. Number of memory pages has to be at least one")]
     RequestedMemoryTooSmall,
-    #[fail(display = "program has too many instructions. Maximum number of instructions: {}", max)]
+    #[fail(
+        display = "program has too many instructions. Maximum number of instructions: {}",
+        max
+    )]
     TooManyInstructions { max: u16 },
     #[fail(display = "entry point does not point to a valid instruction")]
     InvalidEntryPoint,
