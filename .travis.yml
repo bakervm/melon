@@ -6,6 +6,10 @@ branches:
   only:
     - master
 
+stages:
+  - test
+  - coverage
+
 jobs:
   include:
     - name: "Windows build"
@@ -28,6 +32,7 @@ jobs:
         - cargo build --verbose
         - cargo test --verbose
     - name: "Code coverage"
+      stage: coverage
       os: linux
       sudo: required
       dist: trusty
