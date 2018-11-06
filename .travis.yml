@@ -37,6 +37,8 @@
 
 language: rust
 
+cache: cargo
+
 branches:
   only:
     - master
@@ -47,21 +49,21 @@ jobs:
       os: windows
       rust: stable
       script:
-        - cargo build --verbose --all
-        - cargo test --verbose --all
+        - cargo build --verbose
+        - cargo test --verbose
     - name: "macOS build"
       os: osx
       rust: stable
       script:
-        - cargo build --verbose --all
-        - cargo test --verbose --all
+        - cargo build --verbose
+        - cargo test --verbose
     - name: "Ubuntu build"
       os: linux
       dist: trusty
       rust: stable
       script:
-        - cargo build --verbose --all
-        - cargo test --verbose --all
+        - cargo build --verbose
+        - cargo test --verbose
     - name: "Code coverage"
       os: linux
       dist: trusty
