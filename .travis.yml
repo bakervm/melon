@@ -35,6 +35,8 @@
 #   fi
 #
 
+language: rust
+
 branches:
   only:
     - master
@@ -43,7 +45,6 @@ jobs:
   include:
     - name: "Windows build"
       os: windows
-      language: rust
       rust: stable
       script:
         - cargo build --verbose --all
