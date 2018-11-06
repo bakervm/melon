@@ -44,29 +44,28 @@ jobs:
     - name: "Windows build"
       os: windows
       language: rust
-      rust:
-        - stable
-        - beta
-        - nightly
+      rust: stable
       script:
         - cargo build --verbose --all
         - cargo test --verbose --all
     - name: "macOS build"
       os: osx
-      rust:
-        - stable
-        - beta
-        - nightly
+      rust: stable
       script:
         - cargo build --verbose --all
         - cargo test --verbose --all
     - name: "Ubuntu build"
       os: linux
       dist: trusty
-      rust:
-        - stable
-        - beta
-        - nightly
+      rust: stable
       script:
         - cargo build --verbose --all
         - cargo test --verbose --all
+    - name: "Code coverage"
+      os: linux
+      dist: trusty
+      rust: nightly
+      install: RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin
+      script:
+        - cargo tarpaulin --out Xml
+        - bash <(curl -s https://codecov.io/bash)
