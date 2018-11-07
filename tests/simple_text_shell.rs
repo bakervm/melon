@@ -52,7 +52,6 @@ fn wrong_system_id() {
 }
 
 #[test]
-#[should_panic]
 fn wrong_target_version() {
     let mut virt = VM::default();
 
@@ -65,5 +64,5 @@ fn wrong_target_version() {
             entry_point: 0,
         },
         &mut TextConsole::new(),
-    ).unwrap();
+    ).unwrap_err();
 }
