@@ -2,7 +2,7 @@ extern crate melon;
 extern crate rand;
 
 use melon::typedef::*;
-use melon::{Debugger, Program, System, VM};
+use melon::{Debugger, ProgramBuilder, System, VM};
 use rand::{distributions::Standard, thread_rng, Rng};
 
 const LIMIT: usize = 1000;
@@ -40,13 +40,9 @@ fn main() {
 
     let mut sys = MyPerfectSystem::new();
 
-    let program = Program {
-        target_version: melon::VERSION.into(),
-        system_id: MyPerfectSystem::ID.into(),
-        instructions: rng.sample_iter(&Standard).take(LIMIT).collect(),
-        mem_pages: None,
-        entry_point: 0,
-    };
+    let program = ProgramBuilder::new(MyPerfectSystem::ID.into())
+        .instructions(rng.sample_iter(&Standard).take(LIMIT).collect())
+        .gen();
 
     Debugger::default()
         .exec(&program, &mut sys)

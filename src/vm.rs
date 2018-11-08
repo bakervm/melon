@@ -1,4 +1,5 @@
 use byteorder::{BigEndian, ByteOrder};
+use consts;
 use failure::ResultExt;
 use instruction::{Instruction, IntegerType, Register};
 use program::Program;
@@ -72,22 +73,22 @@ impl VM {
         *self = Default::default();
 
         ensure!(
-            program.system_id == T::ID,
+            program.system_id() == T::ID,
             VMError::WrongSystemId {
                 runtime: T::ID.into(),
-                program: program.system_id.clone()
+                program: program.system_id().clone()
             }
         );
 
         ensure!(
-            program.target_version == ::VERSION,
+            consts::VERSION_REQ.matches(&program.target_version()),
             VMError::WrongTargetVersion {
-                runtime: ::VERSION.into(),
-                program: program.target_version.clone(),
+                runtime: (*consts::VERSION).to_string(),
+                program: program.target_version().to_string(),
             }
         );
 
-        if let Some(mem_pages) = program.mem_pages {
+        if let Some(mem_pages) = program.mem_pages() {
             ensure!(
                 (mem_pages + T::MEM_PAGES) <= MAX_MEM_PAGE_COUNT,
                 VMError::RequestedMemoryTooBig {
@@ -100,25 +101,25 @@ impl VM {
         }
 
         ensure!(
-            program.instructions.len() <= (u16::max_value() as usize),
+            program.instructions().len() <= (u16::max_value() as usize),
             VMError::TooManyInstructions {
                 max: u16::max_value()
             }
         );
 
         ensure!(
-            program.instructions.is_empty()
-                || (program.entry_point as usize) < program.instructions.len(),
+            program.instructions().is_empty()
+                || (program.entry_point() as usize) < program.instructions().len(),
             VMError::InvalidEntryPoint
         );
 
-        let mem_pages = program.mem_pages.unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
+        let mem_pages = program.mem_pages().unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
         let mem_size: usize = (mem_pages as usize) * MEM_PAGE;
 
-        self.program = program.instructions.clone();
+        self.program = program.instructions().clone();
         self.mem = vec![0; mem_size];
         self.sp = (self.mem.len() - 1) as Address;
-        self.pc = program.entry_point;
+        self.pc = program.entry_point();
 
         Ok(())
     }
@@ -1158,7 +1159,7 @@ mod tests {
 
     mod helper {
         use instruction::{Instruction, IntegerType, Register};
-        use program::Program;
+        use program::ProgramBuilder;
         use system::System;
 
         #[derive(Default, Clone)]
@@ -1174,16 +1175,6 @@ mod tests {
 
         pub fn generate_system() -> BogusSystem {
             Default::default()
-        }
-
-        pub fn generate_program() -> Program {
-            Program {
-                target_version: ::VERSION.to_owned(),
-                system_id: BogusSystem::ID.to_owned(),
-                instructions: generate_instructions(),
-                mem_pages: Some(63),
-                entry_point: 0,
-            }
         }
 
         pub fn generate_instructions() -> Vec<Instruction> {
@@ -1204,6 +1195,12 @@ mod tests {
                 Instruction::Load(IntegerType::I16, 0xABDC),
                 Instruction::SysCall(123),
             ]
+        }
+
+        pub fn program_builder() -> ProgramBuilder {
+            ProgramBuilder::new(BogusSystem::ID.to_owned())
+                .instructions(generate_instructions())
+                .mem_pages(63)
         }
     }
 
@@ -1239,7 +1236,7 @@ mod tests {
     #[test]
     fn stack_u8() {
         let mut vm = VM::default();
-        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+        vm.reset::<helper::BogusSystem>(&helper::program_builder().gen())
             .unwrap();
 
         let mut rng = thread_rng();
@@ -1255,7 +1252,7 @@ mod tests {
     #[test]
     fn stack_i8() {
         let mut vm = VM::default();
-        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+        vm.reset::<helper::BogusSystem>(&helper::program_builder().gen())
             .unwrap();
 
         let mut rng = thread_rng();
@@ -1271,7 +1268,7 @@ mod tests {
     #[test]
     fn stack_u16() {
         let mut vm = VM::default();
-        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+        vm.reset::<helper::BogusSystem>(&helper::program_builder().gen())
             .unwrap();
 
         let mut rng = thread_rng();
@@ -1287,7 +1284,7 @@ mod tests {
     #[test]
     fn stack_i16() {
         let mut vm = VM::default();
-        vm.reset::<helper::BogusSystem>(&helper::generate_program())
+        vm.reset::<helper::BogusSystem>(&helper::program_builder().gen())
             .unwrap();
 
         let mut rng = thread_rng();
@@ -1303,7 +1300,7 @@ mod tests {
     #[test]
     fn simple_execution() {
         let mut system = helper::generate_system();
-        let program = helper::generate_program();
+        let program = helper::program_builder().gen();
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
@@ -1321,10 +1318,10 @@ mod tests {
     #[test]
     fn pc_out_of_bounds() {
         let mut system = helper::generate_system();
-        let program = helper::generate_program();
+        let program = helper::program_builder().gen();
 
         let mut vm = VM::default();
-        vm.pc = (program.instructions.len() + 20) as Address;
+        vm.pc = (program.instructions().len() + 20) as Address;
 
         vm.exec(&program, &mut system).unwrap();
     }
@@ -1333,8 +1330,9 @@ mod tests {
     fn int_exec() {
         for i in 0..300 {
             let mut system = helper::generate_system();
-            let mut program = helper::generate_program();
-            program.instructions = vec![Instruction::SysCall(i)];
+            let program = helper::program_builder()
+                .instructions(vec![Instruction::SysCall(i)])
+                .gen();
 
             let mut vm = VM::default();
             vm.exec(&program, &mut system).unwrap();
@@ -1345,8 +1343,7 @@ mod tests {
     #[should_panic]
     fn mem_too_small() {
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.mem_pages = Some(1);
+        let program = helper::program_builder().mem_pages(1).gen();
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
@@ -1356,8 +1353,9 @@ mod tests {
     #[should_panic]
     fn mem_too_big() {
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.mem_pages = Some(MAX_MEM_PAGE_COUNT + 1);
+        let program = helper::program_builder()
+            .mem_pages(MAX_MEM_PAGE_COUNT + 1)
+            .gen();
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
@@ -1367,9 +1365,11 @@ mod tests {
     #[should_panic]
     fn program_too_big() {
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-
-        program.instructions = vec![Instruction::SysCall(123); (u16::max_value() as usize) + 2];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::SysCall(123);
+                (u16::max_value() as usize) + 2
+            ]).gen();
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
@@ -1393,8 +1393,7 @@ mod tests {
         ];
 
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.instructions = instr;
+        let program = helper::program_builder().instructions(instr).gen();
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap();
@@ -1409,43 +1408,46 @@ mod tests {
     fn add_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(50),
-            Instruction::PushConstU8(50),
-            Instruction::Add(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(50),
+                Instruction::PushConstU8(50),
+                Instruction::Add(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 100);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(2500),
-            Instruction::PushConstU16(1000),
-            Instruction::Add(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(2500),
+                Instruction::PushConstU16(1000),
+                Instruction::Add(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 3500);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(50),
-            Instruction::PushConstI8(-20),
-            Instruction::Add(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(50),
+                Instruction::PushConstI8(-20),
+                Instruction::Add(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 30);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(50),
-            Instruction::PushConstI16(1000),
-            Instruction::Add(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(50),
+                Instruction::PushConstI16(1000),
+                Instruction::Add(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1456,43 +1458,46 @@ mod tests {
     fn sub_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(100),
-            Instruction::PushConstU8(50),
-            Instruction::Sub(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(100),
+                Instruction::PushConstU8(50),
+                Instruction::Sub(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 50);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(2500),
-            Instruction::PushConstU16(1000),
-            Instruction::Sub(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(2500),
+                Instruction::PushConstU16(1000),
+                Instruction::Sub(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 1500);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(50),
-            Instruction::PushConstI8(100),
-            Instruction::Sub(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(50),
+                Instruction::PushConstI8(100),
+                Instruction::Sub(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -50);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(50),
-            Instruction::PushConstI16(1000),
-            Instruction::Sub(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(50),
+                Instruction::PushConstI16(1000),
+                Instruction::Sub(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1503,43 +1508,46 @@ mod tests {
     fn mul_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(8),
-            Instruction::PushConstU8(8),
-            Instruction::Mul(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(8),
+                Instruction::PushConstU8(8),
+                Instruction::Mul(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 64);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(150),
-            Instruction::PushConstU16(150),
-            Instruction::Mul(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(150),
+                Instruction::PushConstU16(150),
+                Instruction::Mul(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 22500);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(13),
-            Instruction::PushConstI8(-4),
-            Instruction::Mul(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(13),
+                Instruction::PushConstI8(-4),
+                Instruction::Mul(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -52);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(-50),
-            Instruction::PushConstI16(100),
-            Instruction::Mul(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(-50),
+                Instruction::PushConstI16(100),
+                Instruction::Mul(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1550,43 +1558,46 @@ mod tests {
     fn div_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(8),
-            Instruction::PushConstU8(4),
-            Instruction::Div(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(8),
+                Instruction::PushConstU8(4),
+                Instruction::Div(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 2);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(1500),
-            Instruction::PushConstU16(500),
-            Instruction::Div(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(1500),
+                Instruction::PushConstU16(500),
+                Instruction::Div(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 3);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(13),
-            Instruction::PushConstI8(-4),
-            Instruction::Div(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(13),
+                Instruction::PushConstI8(-4),
+                Instruction::Div(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -3);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(1000),
-            Instruction::PushConstI16(-50),
-            Instruction::Div(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(1000),
+                Instruction::PushConstI16(-50),
+                Instruction::Div(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1597,43 +1608,46 @@ mod tests {
     fn shr_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(8),
-            Instruction::PushConstU8(3),
-            Instruction::Shr(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(8),
+                Instruction::PushConstU8(3),
+                Instruction::Shr(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 1);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(16),
-            Instruction::PushConstU16(1),
-            Instruction::Shr(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(16),
+                Instruction::PushConstU16(1),
+                Instruction::Shr(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 8);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(32),
-            Instruction::PushConstI8(2),
-            Instruction::Shr(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(32),
+                Instruction::PushConstI8(2),
+                Instruction::Shr(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 8);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(128),
-            Instruction::PushConstI16(4),
-            Instruction::Shr(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(128),
+                Instruction::PushConstI16(4),
+                Instruction::Shr(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1644,43 +1658,46 @@ mod tests {
     fn shl_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(1),
-            Instruction::PushConstU8(4),
-            Instruction::Shl(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(1),
+                Instruction::PushConstU8(4),
+                Instruction::Shl(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 16);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(1),
-            Instruction::PushConstU16(8),
-            Instruction::Shl(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(1),
+                Instruction::PushConstU16(8),
+                Instruction::Shl(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 256);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(1),
-            Instruction::PushConstI8(3),
-            Instruction::Shl(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(1),
+                Instruction::PushConstI8(3),
+                Instruction::Shl(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 8);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(1),
-            Instruction::PushConstI16(2),
-            Instruction::Shl(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(1),
+                Instruction::PushConstI16(2),
+                Instruction::Shl(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1691,43 +1708,46 @@ mod tests {
     fn and_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(0b0101_0101),
-            Instruction::PushConstU8(0xFF),
-            Instruction::And(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(0b0101_0101),
+                Instruction::PushConstU8(0xFF),
+                Instruction::And(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0b0101_0101);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(0b1010_1010_1010_1010),
-            Instruction::PushConstU16(0xFFFF),
-            Instruction::And(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(0b1010_1010_1010_1010),
+                Instruction::PushConstU16(0xFFFF),
+                Instruction::And(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0b1010_1010_1010_1010);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(0b0101),
-            Instruction::PushConstI8(0x0F),
-            Instruction::And(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(0b0101),
+                Instruction::PushConstI8(0x0F),
+                Instruction::And(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 0b0101);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(0b0101_0101),
-            Instruction::PushConstI16(0xFF),
-            Instruction::And(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(0b0101_0101),
+                Instruction::PushConstI16(0xFF),
+                Instruction::And(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1738,43 +1758,46 @@ mod tests {
     fn or_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(0xFF),
-            Instruction::PushConstU8(0x00),
-            Instruction::Or(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(0xFF),
+                Instruction::PushConstU8(0x00),
+                Instruction::Or(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xFF);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(0xFF00),
-            Instruction::PushConstU16(0x00FF),
-            Instruction::Or(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(0xFF00),
+                Instruction::PushConstU16(0x00FF),
+                Instruction::Or(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0xFFFF);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(0x0F),
-            Instruction::PushConstI8(0x00),
-            Instruction::Or(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(0x0F),
+                Instruction::PushConstI8(0x00),
+                Instruction::Or(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 0x0F);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(0x00FF),
-            Instruction::PushConstI16(0x0000),
-            Instruction::Or(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(0x00FF),
+                Instruction::PushConstI16(0x0000),
+                Instruction::Or(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1785,43 +1808,46 @@ mod tests {
     fn xor_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(0xFF),
-            Instruction::PushConstU8(0x00),
-            Instruction::Xor(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(0xFF),
+                Instruction::PushConstU8(0x00),
+                Instruction::Xor(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xFF);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(0xFF00),
-            Instruction::PushConstU16(0x00FF),
-            Instruction::Xor(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(0xFF00),
+                Instruction::PushConstU16(0x00FF),
+                Instruction::Xor(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0xFFFF);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(0x0F),
-            Instruction::PushConstI8(0x00),
-            Instruction::Xor(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(0x0F),
+                Instruction::PushConstI8(0x00),
+                Instruction::Xor(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 0x0F);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(0x00FF),
-            Instruction::PushConstI16(0x0000),
-            Instruction::Xor(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(0x00FF),
+                Instruction::PushConstI16(0x0000),
+                Instruction::Xor(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1832,39 +1858,42 @@ mod tests {
     fn not_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(0x0F),
-            Instruction::Not(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(0x0F),
+                Instruction::Not(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xF0);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(0xFF00),
-            Instruction::Not(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(0xFF00),
+                Instruction::Not(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 0x00FF);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(0x0F),
-            Instruction::Not(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(0x0F),
+                Instruction::Not(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 0xF0);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(0x00FF),
-            Instruction::Not(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(0x00FF),
+                Instruction::Not(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1875,31 +1904,36 @@ mod tests {
     fn neg_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstI8(104),
-            Instruction::Neg(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(104),
+                Instruction::Neg(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -104);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(-1234),
-            Instruction::Neg(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(-1234),
+                Instruction::Neg(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), 1234);
 
-        program.instructions = vec![Instruction::Neg(IntegerType::U8)];
+        let program = helper::program_builder()
+            .instructions(vec![Instruction::Neg(IntegerType::U8)])
+            .gen();
 
         assert!(vm.exec(&program, &mut system).is_err());
 
-        program.instructions = vec![Instruction::Neg(IntegerType::U16)];
+        let program = helper::program_builder()
+            .instructions(vec![Instruction::Neg(IntegerType::U16)])
+            .gen();
 
         assert!(vm.exec(&program, &mut system).is_err());
     }
@@ -1908,13 +1942,13 @@ mod tests {
     fn cmp_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(104),
-            Instruction::PushConstU8(98),
-            Instruction::Cmp(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(104),
+                Instruction::PushConstU8(98),
+                Instruction::Cmp(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1922,11 +1956,12 @@ mod tests {
         assert_eq!(vm.pop_u8().unwrap(), 98);
         assert_eq!(vm.pop_u8().unwrap(), 104);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(20000),
-            Instruction::PushConstU16(20000),
-            Instruction::Cmp(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(20000),
+                Instruction::PushConstU16(20000),
+                Instruction::Cmp(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1934,11 +1969,12 @@ mod tests {
         assert_eq!(vm.pop_u16().unwrap(), 20000);
         assert_eq!(vm.pop_u16().unwrap(), 20000);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(-32),
-            Instruction::PushConstI8(-64),
-            Instruction::Cmp(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(-32),
+                Instruction::PushConstI8(-64),
+                Instruction::Cmp(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1946,11 +1982,12 @@ mod tests {
         assert_eq!(vm.pop_i8().unwrap(), -64);
         assert_eq!(vm.pop_i8().unwrap(), -32);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(-3200),
-            Instruction::PushConstI16(-6400),
-            Instruction::Cmp(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(-3200),
+                Instruction::PushConstI16(-6400),
+                Instruction::Cmp(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1963,64 +2000,67 @@ mod tests {
     fn inc_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(100),
-            Instruction::Inc(IntegerType::U8),
-            Instruction::Inc(IntegerType::U8),
-            Instruction::Inc(IntegerType::U8),
-            Instruction::Inc(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(100),
+                Instruction::Inc(IntegerType::U8),
+                Instruction::Inc(IntegerType::U8),
+                Instruction::Inc(IntegerType::U8),
+                Instruction::Inc(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 104);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(20000),
-            Instruction::Inc(IntegerType::U16),
-            Instruction::Inc(IntegerType::U16),
-            Instruction::Inc(IntegerType::U16),
-            Instruction::Inc(IntegerType::U16),
-            Instruction::Inc(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(20000),
+                Instruction::Inc(IntegerType::U16),
+                Instruction::Inc(IntegerType::U16),
+                Instruction::Inc(IntegerType::U16),
+                Instruction::Inc(IntegerType::U16),
+                Instruction::Inc(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 20005);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(-32),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-            Instruction::Inc(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(-32),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+                Instruction::Inc(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), -16);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(-4),
-            Instruction::Inc(IntegerType::I16),
-            Instruction::Inc(IntegerType::I16),
-            Instruction::Inc(IntegerType::I16),
-            Instruction::Inc(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(-4),
+                Instruction::Inc(IntegerType::I16),
+                Instruction::Inc(IntegerType::I16),
+                Instruction::Inc(IntegerType::I16),
+                Instruction::Inc(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2031,64 +2071,67 @@ mod tests {
     fn dec_instruction() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU8(100),
-            Instruction::Dec(IntegerType::U8),
-            Instruction::Dec(IntegerType::U8),
-            Instruction::Dec(IntegerType::U8),
-            Instruction::Dec(IntegerType::U8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU8(100),
+                Instruction::Dec(IntegerType::U8),
+                Instruction::Dec(IntegerType::U8),
+                Instruction::Dec(IntegerType::U8),
+                Instruction::Dec(IntegerType::U8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u8().unwrap(), 96);
 
-        program.instructions = vec![
-            Instruction::PushConstU16(20000),
-            Instruction::Dec(IntegerType::U16),
-            Instruction::Dec(IntegerType::U16),
-            Instruction::Dec(IntegerType::U16),
-            Instruction::Dec(IntegerType::U16),
-            Instruction::Dec(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(20000),
+                Instruction::Dec(IntegerType::U16),
+                Instruction::Dec(IntegerType::U16),
+                Instruction::Dec(IntegerType::U16),
+                Instruction::Dec(IntegerType::U16),
+                Instruction::Dec(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_u16().unwrap(), 19995);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(32),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-            Instruction::Dec(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(32),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+                Instruction::Dec(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i8().unwrap(), 16);
 
-        program.instructions = vec![
-            Instruction::PushConstI16(4),
-            Instruction::Dec(IntegerType::I16),
-            Instruction::Dec(IntegerType::I16),
-            Instruction::Dec(IntegerType::I16),
-            Instruction::Dec(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(4),
+                Instruction::Dec(IntegerType::I16),
+                Instruction::Dec(IntegerType::I16),
+                Instruction::Dec(IntegerType::I16),
+                Instruction::Dec(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2099,21 +2142,34 @@ mod tests {
     fn promotion_demotion() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![Instruction::PushConstU8(90), Instruction::U8Promote];
+        let program = helper::program_builder()
+            .instructions(vec![Instruction::PushConstU8(90), Instruction::U8Promote])
+            .gen();
+
         vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_u16().unwrap(), 90);
 
-        program.instructions = vec![Instruction::PushConstU16(190), Instruction::U16Demote];
+        let program = helper::program_builder()
+            .instructions(vec![Instruction::PushConstU16(190), Instruction::U16Demote])
+            .gen();
+
         vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_u8().unwrap(), 190);
 
-        program.instructions = vec![Instruction::PushConstI8(-90), Instruction::I8Promote];
+        let program = helper::program_builder()
+            .instructions(vec![Instruction::PushConstI8(-90), Instruction::I8Promote])
+            .gen();
+
         vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_i16().unwrap(), -90);
 
-        program.instructions = vec![Instruction::PushConstI16(-120), Instruction::I16Demote];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(-120),
+                Instruction::I16Demote,
+            ]).gen();
+
         vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_i8().unwrap(), -120);
     }
@@ -2122,54 +2178,62 @@ mod tests {
     fn jumps() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::Jmp(true, 6),
-            Instruction::Jmp(true, 1),
-            Instruction::Jmp(true, 1),
-            Instruction::Jmp(true, 1),
-            Instruction::Jmp(true, 1),
-            Instruction::Jmp(true, 2),
-            Instruction::Jmp(false, 5),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Jmp(true, 6),
+                Instruction::Jmp(true, 1),
+                Instruction::Jmp(true, 1),
+                Instruction::Jmp(true, 1),
+                Instruction::Jmp(true, 1),
+                Instruction::Jmp(true, 2),
+                Instruction::Jmp(false, 5),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
-        program.instructions = vec![
-            Instruction::Jmp(true, 1),
-            Instruction::PushConstU8(2),
-            Instruction::PushConstU8(1),
-            Instruction::Cmp(IntegerType::U8),
-            Instruction::Jgt(true, 100),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Jmp(true, 1),
+                Instruction::PushConstU8(2),
+                Instruction::PushConstU8(1),
+                Instruction::Cmp(IntegerType::U8),
+                Instruction::Jgt(true, 100),
+            ]).gen();
+
         vm.exec(&program, &mut system).unwrap();
 
-        program.instructions = vec![
-            Instruction::Jmp(true, 1),
-            Instruction::PushConstI8(1),
-            Instruction::PushConstI8(2),
-            Instruction::Cmp(IntegerType::I8),
-            Instruction::Jlt(true, 100),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Jmp(true, 1),
+                Instruction::PushConstI8(1),
+                Instruction::PushConstI8(2),
+                Instruction::Cmp(IntegerType::I8),
+                Instruction::Jlt(true, 100),
+            ]).gen();
+
         vm.exec(&program, &mut system).unwrap();
 
-        program.instructions = vec![
-            Instruction::Jmp(true, 1),
-            Instruction::PushConstU8(2),
-            Instruction::PushConstU8(2),
-            Instruction::Cmp(IntegerType::U8),
-            Instruction::Jeq(true, 100),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Jmp(true, 1),
+                Instruction::PushConstU8(2),
+                Instruction::PushConstU8(2),
+                Instruction::Cmp(IntegerType::U8),
+                Instruction::Jeq(true, 100),
+            ]).gen();
+
         vm.exec(&program, &mut system).unwrap();
 
-        program.instructions = vec![
-            Instruction::Jmp(true, 1),
-            Instruction::PushConstU8(40),
-            Instruction::PushConstU8(20),
-            Instruction::Cmp(IntegerType::U8),
-            Instruction::Jneq(true, 100),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Jmp(true, 1),
+                Instruction::PushConstU8(40),
+                Instruction::PushConstU8(20),
+                Instruction::Cmp(IntegerType::U8),
+                Instruction::Jneq(true, 100),
+            ]).gen();
+
         vm.exec(&program, &mut system).unwrap();
     }
 
@@ -2177,17 +2241,17 @@ mod tests {
     fn indirect_addr() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstU16(0x0FFF),
-            Instruction::PushConstI16(-1234),
-            Instruction::StoreIndirect(IntegerType::I16),
-            Instruction::PushConstU16(0x0FFF - 1),
-            Instruction::PushConstU16(1),
-            Instruction::Add(IntegerType::U16),
-            Instruction::LoadIndirect(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(0x0FFF),
+                Instruction::PushConstI16(-1234),
+                Instruction::StoreIndirect(IntegerType::I16),
+                Instruction::PushConstU16(0x0FFF - 1),
+                Instruction::PushConstU16(1),
+                Instruction::Add(IntegerType::U16),
+                Instruction::LoadIndirect(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2198,30 +2262,31 @@ mod tests {
     fn dup_drop() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::PushConstI16(-1234),
-            Instruction::PushConstU16(0x0FFF),
-            Instruction::PushConstI8(-3),
-            Instruction::Drop(IntegerType::I8),
-            Instruction::Drop(IntegerType::U16),
-            Instruction::Dup(IntegerType::I16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI16(-1234),
+                Instruction::PushConstU16(0x0FFF),
+                Instruction::PushConstI8(-3),
+                Instruction::Drop(IntegerType::I8),
+                Instruction::Drop(IntegerType::U16),
+                Instruction::Dup(IntegerType::I16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
         assert_eq!(vm.pop_i16().unwrap(), -1234);
         assert_eq!(vm.pop_i16().unwrap(), -1234);
 
-        program.instructions = vec![
-            Instruction::PushConstI8(-120),
-            Instruction::PushConstU8(0xFF),
-            Instruction::PushConstI16(-2000),
-            Instruction::Drop(IntegerType::I16),
-            Instruction::Drop(IntegerType::U8),
-            Instruction::Dup(IntegerType::I8),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstI8(-120),
+                Instruction::PushConstU8(0xFF),
+                Instruction::PushConstI16(-2000),
+                Instruction::Drop(IntegerType::I16),
+                Instruction::Drop(IntegerType::U8),
+                Instruction::Dup(IntegerType::I8),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2233,11 +2298,12 @@ mod tests {
     fn missing_call_for_ret() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![Instruction::Ret];
+        let program = helper::program_builder()
+            .instructions(vec![Instruction::Ret])
+            .gen();
 
-        let err = vm.exec(&program, &mut system).err().unwrap();
+        let err = vm.exec(&program, &mut system).unwrap_err();
         let formatted_err = format!("{}", err);
 
         assert_eq!(formatted_err, "cannot return from an empty call stack");
@@ -2247,17 +2313,17 @@ mod tests {
     fn regular_call() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
 
-        program.instructions = vec![
-            Instruction::Call(0x0002),
-            Instruction::SysCall(0),
-            Instruction::PushConstI16(1234),
-            Instruction::PushConstI16(1234),
-            Instruction::Sub(IntegerType::I16),
-            Instruction::Store(IntegerType::I16, 0x0000),
-            Instruction::Ret,
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Call(0x0002),
+                Instruction::SysCall(0),
+                Instruction::PushConstI16(1234),
+                Instruction::PushConstI16(1234),
+                Instruction::Sub(IntegerType::I16),
+                Instruction::Store(IntegerType::I16, 0x0000),
+                Instruction::Ret,
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2267,8 +2333,10 @@ mod tests {
     fn pop_empty_stack() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.instructions = vec![Instruction::Drop(IntegerType::U8)];
+
+        let program = helper::program_builder()
+            .instructions(vec![Instruction::Drop(IntegerType::U8)])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2278,12 +2346,12 @@ mod tests {
     fn pop_corrupted_stack() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.instructions = vec![
-            Instruction::PushConstU16(0xAABB),
-            Instruction::Drop(IntegerType::U8),
-            Instruction::Drop(IntegerType::U16),
-        ];
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::PushConstU16(0xAABB),
+                Instruction::Drop(IntegerType::U8),
+                Instruction::Drop(IntegerType::U16),
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2292,15 +2360,16 @@ mod tests {
     fn alloc_and_free() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.instructions = vec![
-            Instruction::Alloc(10),
-            Instruction::Alloc(30),
-            Instruction::Free,
-            Instruction::Free,
-            Instruction::Alloc(20),
-            Instruction::Free,
-        ];
+
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Alloc(10),
+                Instruction::Alloc(30),
+                Instruction::Free,
+                Instruction::Free,
+                Instruction::Alloc(20),
+                Instruction::Free,
+            ]).gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2311,13 +2380,14 @@ mod tests {
     fn heap_crash() {
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.mem_pages = Some(1);
-        program.instructions = vec![
-            Instruction::Alloc(600),
-            Instruction::PushConstU16(0xFFFF),
-            Instruction::Jmp(false, 1),
-        ];
+
+        let program = helper::program_builder()
+            .instructions(vec![
+                Instruction::Alloc(600),
+                Instruction::PushConstU16(0xFFFF),
+                Instruction::Jmp(false, 1),
+            ]).mem_pages(1)
+            .gen();
 
         vm.exec(&program, &mut system).unwrap_err();
     }
@@ -2326,13 +2396,25 @@ mod tests {
     fn fuzz_instructions() {
         let mut rng = thread_rng();
 
-        let instructions: Vec<Instruction> = rng.sample_iter(&Standard).take(64_000).collect();
-
         let mut vm = VM::default();
         let mut system = helper::generate_system();
-        let mut program = helper::generate_program();
-        program.instructions = instructions;
+        let program = helper::program_builder()
+            .instructions(rng.sample_iter(&Standard).take(64_000).collect())
+            .gen();
 
         let _ = vm.exec(&program, &mut system);
+    }
+
+    #[test]
+    fn wrong_target_version() {
+        let mut virt = VM::default();
+        let mut system = helper::generate_system();
+
+        virt.exec(
+            &helper::program_builder()
+                .mem_pages(20)
+                .gen_with_version("0.0.0"),
+            &mut system,
+        ).unwrap_err();
     }
 }

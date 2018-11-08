@@ -1,6 +1,8 @@
+use consts;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use instruction::Instruction;
 use rmps::{Deserializer, Serializer};
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -12,16 +14,16 @@ use typedef::*;
 /// The container for a program
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Program {
-    /// The target version of the `melon` API
-    pub target_version: String,
+    /// The target version of the `melon` API the program was compiled against
+    target_version: Version,
     /// The ID of the System the program is compiled against
-    pub system_id: String,
+    system_id: String,
     /// The instuctions of the program
-    pub instructions: Vec<Instruction>,
+    instructions: Vec<Instruction>,
     /// (Optional) The *minimum* number of allocated memory pages (1 page = 1024 Byte)
-    pub mem_pages: Option<u8>,
+    mem_pages: Option<u8>,
     /// The entry address of the program
-    pub entry_point: Address,
+    entry_point: Address,
 }
 
 impl Program {
@@ -72,6 +74,92 @@ impl Program {
 
         Ok(())
     }
+
+    /// The target version of the `melon` API the program was compiled against
+    pub fn target_version(&self) -> &Version {
+        &self.target_version
+    }
+    /// The ID of the System the program is compiled against
+    pub fn system_id(&self) -> &String {
+        &self.system_id
+    }
+    /// The instuctions of the program
+    pub fn instructions(&self) -> &Vec<Instruction> {
+        &self.instructions
+    }
+    /// (Optional) The *minimum* number of allocated memory pages (1 page = 1024 Byte)
+    pub fn mem_pages(&self) -> Option<u8> {
+        self.mem_pages
+    }
+    /// The entry address of the program
+    pub fn entry_point(&self) -> Address {
+        self.entry_point
+    }
+}
+
+/// A builder for generating `Program`s
+pub struct ProgramBuilder {
+    /// The ID of the System the program is compiled against
+    system_id: String,
+    /// The instuctions of the program
+    instructions: Vec<Instruction>,
+    /// (Optional) The *minimum* number of allocated memory pages (1 page = 1024 Byte)
+    mem_pages: Option<u8>,
+    /// The entry address of the program
+    entry_point: Address,
+}
+
+impl ProgramBuilder {
+    /// Creates a new `ProgramBuilder` with the given system_id
+    pub fn new(system_id: String) -> ProgramBuilder {
+        ProgramBuilder {
+            system_id,
+            entry_point: 0,
+            instructions: Vec::new(),
+            mem_pages: None,
+        }
+    }
+
+    /// Adds instructions to the builder
+    pub fn instructions(mut self, instructions: Vec<Instruction>) -> ProgramBuilder {
+        self.instructions = instructions;
+        self
+    }
+
+    /// Adds an entry point to the builder
+    pub fn entry_point(mut self, entry_point: Address) -> ProgramBuilder {
+        self.entry_point = entry_point;
+        self
+    }
+
+    /// Adds a requirement for memory pages to the builder
+    pub fn mem_pages(mut self, mem_pages: u8) -> ProgramBuilder {
+        self.mem_pages = Some(mem_pages);
+        self
+    }
+
+    /// Generates a `Program` with the given setup and also overwrites the version number
+    #[cfg(test)]
+    pub(crate) fn gen_with_version(&self, version: &str) -> Program {
+        Program {
+            target_version: Version::parse(version).expect("unable to parse version"),
+            system_id: self.system_id.clone(),
+            instructions: self.instructions.clone(),
+            mem_pages: self.mem_pages,
+            entry_point: self.entry_point,
+        }
+    }
+
+    /// Generates a `Program` with the given setup
+    pub fn gen(&self) -> Program {
+        Program {
+            target_version: (*consts::VERSION).clone(),
+            system_id: self.system_id.clone(),
+            instructions: self.instructions.clone(),
+            mem_pages: self.mem_pages,
+            entry_point: self.entry_point,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -97,7 +185,7 @@ mod tests {
             .join(PathBuf::from("test").with_extension(ROM_FILE_EXTENSION));
 
         let program = Program {
-            target_version: "bogus_version".into(),
+            target_version: "0.0.0".parse().unwrap(),
             system_id: "bogus_system".into(),
             instructions: rng.sample_iter(&Standard).take(100).collect(),
             mem_pages: Some(1),

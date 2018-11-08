@@ -18,7 +18,8 @@ flate2 = "^1.0"
 structopt = "^0.2"
 rustyline = "^2.1"
 colored = "^1.6"
-semver = "^0.9"
+semver = { version = "^0.9", features = ["serde"] }
+lazy_static = "^1.2"
 
 [dev-dependencies]
 tempfile = "^3.0"
