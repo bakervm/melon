@@ -15,3 +15,13 @@ lazy_static! {
         VersionReq::parse(&version_string).expect("unable to parse version requirement")
     };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn requirement_matches() {
+        assert!(VERSION_REQ.matches(&VERSION));
+    }
+}
