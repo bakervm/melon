@@ -76,15 +76,25 @@ impl Program {
 
 #[cfg(test)]
 mod tests {
+    extern crate tempfile;
+
+    use self::tempfile::TempDir;
     use super::*;
     use rand::{distributions::Standard, thread_rng, Rng};
-    use std::fs;
+    use std::path::PathBuf;
+
+    fn gen_dir() -> TempDir {
+        tempfile::tempdir().expect("unable to create temporary directory")
+    }
 
     #[test]
     fn save_and_load() {
         let mut rng = thread_rng();
+        let tmp_dir = gen_dir();
 
-        let file_name = format!("test.{}", ROM_FILE_EXTENSION);
+        let file_name = tmp_dir
+            .path()
+            .join(PathBuf::from("test").with_extension(ROM_FILE_EXTENSION));
 
         let program = Program {
             target_version: "bogus_version".into(),
@@ -94,11 +104,9 @@ mod tests {
             entry_point: 0,
         };
 
-        program.save_as(file_name.clone()).unwrap();
+        program.save_as(&file_name).unwrap();
 
-        let loaded_program = Program::from_file(file_name.clone()).unwrap();
-
-        fs::remove_file(file_name.clone()).unwrap();
+        let loaded_program = Program::from_file(&file_name).unwrap();
 
         assert_eq!(program.target_version, loaded_program.target_version);
         assert_eq!(program.system_id, loaded_program.system_id);
