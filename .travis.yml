@@ -34,7 +34,7 @@ jobs:
     - name: "Code coverage"
       stage: coverage
       os: linux
-      sudo: required
+      sudo: true
       dist: trusty
       addons:
         apt:
