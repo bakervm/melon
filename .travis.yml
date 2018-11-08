@@ -41,7 +41,7 @@ jobs:
           packages:
             - libssl-dev
       rust: nightly
-      before_cache: RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin
+      before_cache: RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin -f
       script: true
       after_success:
         - cargo tarpaulin --out Xml
