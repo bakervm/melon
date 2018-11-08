@@ -12,6 +12,10 @@ use std::{
 use typedef::*;
 
 /// The container for a program
+///
+/// You can load a `Program` from a file or create one using the [ProgramBuilder][program_builder]
+///
+/// [program_builder]: struct.ProgramBuilder.html
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Program {
     /// The target version of the `melon` API the program was compiled against
