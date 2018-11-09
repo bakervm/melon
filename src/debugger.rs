@@ -85,7 +85,7 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
             let input = match readline {
                 Ok(line) => line,
                 Err(_) => {
-                    vm.return_value = 100;
+                    vm.return_value = 1;
                     vm.halt();
                     break;
                 }
