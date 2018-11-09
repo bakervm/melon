@@ -10,14 +10,16 @@ license = "MIT"
 [dependencies]
 byteorder = "^1.2"
 failure = "^0.1"
-serde = "1"
-serde_derive = "1"
+serde = "^1.0"
+serde_derive = "^1.0"
 rand = "^0.5"
 rmp-serde = "^0.13"
-flate2 = "1"
+flate2 = "^1.0"
 structopt = "^0.2"
-rustyline = "2"
-colored = "1.6.0"
+rustyline = "^2.1"
+colored = "^1.6"
+semver = { version = "^0.9", features = ["serde"] }
+lazy_static = "^1.2"
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = "^3.0"
