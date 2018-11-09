@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `ProgramBuilder`
 - Added matrix room to `README.md`
+- Added Travis builds for all operating systems
 
 ### Changed
 - Made all fields in `Program` private
