@@ -19,7 +19,7 @@ melon = "^0.13"
 ```
 
 ## Get in touch
-If you have any questions do not hesitate joining me on *Freenode* in `#bakervm`. I try to be online as often as possible :grin:
+If you have any questions do not hesitate joining me on *Matrix* in `#bakervm:das-labor.org`. I'm trying to be online as often as possible :grin:
 
 [deps-image]: https://deps.rs/repo/github/bakervm/melon/status.svg
 [deps-link]: https://deps.rs/repo/github/bakervm/melon
