@@ -108,7 +108,7 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
                 }
                 "next" | "n" => break,
                 "exit" | "q" => {
-                    vm.return_value = 1;
+                    vm.return_value = 0;
                     vm.halt();
                     break;
                 }

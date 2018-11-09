@@ -44,7 +44,12 @@ fn main() {
         .instructions(rng.sample_iter(&Standard).take(LIMIT).collect())
         .gen();
 
-    Debugger::default()
+    let exit_code = Debugger::default()
         .exec(&program, &mut sys)
-        .unwrap_or_else(|e| panic!("{}", e));
+        .unwrap_or_else(|e| {
+            eprintln!("Error: {}", e);
+            1
+        });
+
+    std::process::exit(i32::from(exit_code));
 }

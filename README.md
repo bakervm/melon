@@ -12,6 +12,12 @@ A library for creating retro computing platforms
 
 The `Program` struct takes care of loading and saving programs written for an implementation of the `melon` backend. `melon` roms are gzipped msgpack files.
 
+## Usage
+You can add the library to your project by adding the following line to your `Cargo.toml` file:
+```toml
+melon = "^0.13"
+```
+
 ## Get in touch
 If you have any questions do not hesitate joining me on *Freenode* in `#bakervm`. I try to be online as often as possible :grin:
 
