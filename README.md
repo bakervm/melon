@@ -15,7 +15,7 @@ The `Program` struct takes care of loading and saving programs written for an im
 ## Usage
 You can add the library to your project by adding the following line to your `Cargo.toml` file:
 ```toml
-melon = "^0.13"
+melon = "^0.14"
 ```
 
 ## Get in touch
