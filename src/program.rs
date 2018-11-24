@@ -188,13 +188,10 @@ mod tests {
             .path()
             .join(PathBuf::from("test").with_extension(ROM_FILE_EXTENSION));
 
-        let program = Program {
-            target_version: "0.0.0".parse().unwrap(),
-            system_id: "bogus_system".into(),
-            instructions: rng.sample_iter(&Standard).take(100).collect(),
-            mem_pages: Some(1),
-            entry_point: 0,
-        };
+        let program = ProgramBuilder::new("bogus_system".into())
+            .mem_pages(1)
+            .instructions(rng.sample_iter(&Standard).take(100).collect())
+            .gen_with_version("0.0.0");
 
         program.save_as(&file_name).unwrap();
 
