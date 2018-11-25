@@ -88,17 +88,21 @@ impl VM {
             }
         );
 
-        if let Some(mem_pages) = program.mem_pages() {
-            ensure!(
-                (mem_pages + T::MEM_PAGES) <= MAX_MEM_PAGE_COUNT,
-                VMError::RequestedMemoryTooBig {
-                    requested: (mem_pages + T::MEM_PAGES),
-                    max: MAX_MEM_PAGE_COUNT
-                }
-            );
+        let total_reqested_mem_pages =
+            program.mem_pages().unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
 
-            ensure!(mem_pages > 0, VMError::RequestedMemoryTooSmall);
-        }
+        ensure!(
+            total_reqested_mem_pages <= MAX_MEM_PAGE_COUNT,
+            VMError::RequestedMemoryTooBig {
+                requested: total_reqested_mem_pages,
+                max: MAX_MEM_PAGE_COUNT
+            }
+        );
+
+        ensure!(
+            total_reqested_mem_pages > 0,
+            VMError::RequestedMemoryTooSmall
+        );
 
         ensure!(
             program.instructions().len() <= (u16::max_value() as usize),
@@ -113,8 +117,7 @@ impl VM {
             VMError::InvalidEntryPoint
         );
 
-        let mem_pages = program.mem_pages().unwrap_or(DEFAULT_MEM_PAGE_COUNT) + T::MEM_PAGES;
-        let mem_size: usize = (mem_pages as usize) * MEM_PAGE;
+        let mem_size: usize = (total_reqested_mem_pages as usize) * MEM_PAGE;
 
         self.program = program.instructions().clone();
         self.mem = vec![0; mem_size];
@@ -132,7 +135,7 @@ impl VM {
     /// Returns the instruction at the current pc
     pub(crate) fn current_instruction(&mut self) -> Result<Instruction> {
         if let Some(current_instruction) = self.program.get(self.pc as usize) {
-            Ok(current_instruction.clone())
+            Ok(*current_instruction)
         } else {
             bail!(VMError::InvalidProgramCounter { pc: self.pc });
         }
@@ -145,51 +148,52 @@ impl VM {
         system: &mut T,
     ) -> Result<()> {
         match instruction {
-            Instruction::Add(ty) => self.add(&ty)?,
-            Instruction::Sub(ty) => self.sub(&ty)?,
-            Instruction::Mul(ty) => self.mul(&ty)?,
-            Instruction::Div(ty) => self.div(&ty)?,
-            Instruction::Shr(ty) => self.shr(&ty)?,
-            Instruction::Shl(ty) => self.shl(&ty)?,
-            Instruction::And(ty) => self.and(&ty)?,
-            Instruction::Or(ty) => self.or(&ty)?,
-            Instruction::Xor(ty) => self.xor(&ty)?,
-            Instruction::Not(ty) => self.not(&ty)?,
-            Instruction::Neg(ty) => self.neg(&ty)?,
-            Instruction::Cmp(ty) => self.cmp(&ty)?,
-            Instruction::Inc(ty) => self.inc(&ty)?,
-            Instruction::Dec(ty) => self.dec(&ty)?,
-            Instruction::U8Promote => self.u8_promote()?,
-            Instruction::U16Demote => self.u16_demote()?,
-            Instruction::I8Promote => self.i8_promote()?,
-            Instruction::I16Demote => self.i16_demote()?,
-            Instruction::PushConstU8(value) => self.push_const_u8(value)?,
-            Instruction::PushConstU16(value) => self.push_const_u16(value)?,
-            Instruction::PushConstI8(value) => self.push_const_i8(value)?,
-            Instruction::PushConstI16(value) => self.push_const_i16(value)?,
-            Instruction::LoadReg(reg) => self.load_reg(&reg)?,
-            Instruction::Load(ty, addr) => self.load(&ty, addr)?,
-            Instruction::LoadIndirect(ty) => self.load_indirect(&ty)?,
-            Instruction::Store(ty, addr) => self.store(&ty, addr)?,
-            Instruction::StoreIndirect(ty) => self.store_indirect(&ty)?,
-            Instruction::Dup(ty) => self.dup(&ty)?,
-            Instruction::Drop(ty) => self.drop(&ty)?,
-            Instruction::SysCall(0) => self.halt(),
-            Instruction::SysCall(signal) => system.system_call(self, signal)?,
-            Instruction::Call(addr) => self.call(addr)?,
-            Instruction::Ret => self.ret()?,
-            Instruction::Alloc(amount) => self.alloc(amount)?,
-            Instruction::Free => self.free()?,
-            Instruction::Jmp(forward, addr) => self.jmp(forward, addr)?,
-            Instruction::Jneq(forward, addr) => self.jneq(forward, addr)?,
-            Instruction::Jeq(forward, addr) => self.jeq(forward, addr)?,
-            Instruction::Jlt(forward, addr) => self.jlt(forward, addr)?,
-            Instruction::JltEq(forward, addr) => self.jlt_eq(forward, addr)?,
-            Instruction::Jgt(forward, addr) => self.jgt(forward, addr)?,
-            Instruction::JgtEq(forward, addr) => self.jgt_eq(forward, addr)?,
+            Instruction::Add(ty) => self.add(ty),
+            Instruction::Sub(ty) => self.sub(ty),
+            Instruction::Mul(ty) => self.mul(ty),
+            Instruction::Div(ty) => self.div(ty),
+            Instruction::Shr(ty) => self.shr(ty),
+            Instruction::Shl(ty) => self.shl(ty),
+            Instruction::And(ty) => self.and(ty),
+            Instruction::Or(ty) => self.or(ty),
+            Instruction::Xor(ty) => self.xor(ty),
+            Instruction::Not(ty) => self.not(ty),
+            Instruction::Neg(ty) => self.neg(ty),
+            Instruction::Cmp(ty) => self.cmp(ty),
+            Instruction::Inc(ty) => self.inc(ty),
+            Instruction::Dec(ty) => self.dec(ty),
+            Instruction::U8Promote => self.u8_promote(),
+            Instruction::U16Demote => self.u16_demote(),
+            Instruction::I8Promote => self.i8_promote(),
+            Instruction::I16Demote => self.i16_demote(),
+            Instruction::PushConstU8(value) => self.push_const_u8(value),
+            Instruction::PushConstU16(value) => self.push_const_u16(value),
+            Instruction::PushConstI8(value) => self.push_const_i8(value),
+            Instruction::PushConstI16(value) => self.push_const_i16(value),
+            Instruction::LoadReg(reg) => self.load_reg(reg),
+            Instruction::Load(ty, addr) => self.load(ty, addr),
+            Instruction::LoadIndirect(ty) => self.load_indirect(ty),
+            Instruction::Store(ty, addr) => self.store(ty, addr),
+            Instruction::StoreIndirect(ty) => self.store_indirect(ty),
+            Instruction::Dup(ty) => self.dup(ty),
+            Instruction::Drop(ty) => self.drop(ty),
+            Instruction::SysCall(0) => {
+                self.halt();
+                Ok(())
+            }
+            Instruction::SysCall(signal) => system.system_call(self, signal),
+            Instruction::Call(addr) => self.call(addr),
+            Instruction::Ret => self.ret(),
+            Instruction::Alloc(amount) => self.alloc(amount),
+            Instruction::Free => self.free(),
+            Instruction::Jmp(forward, addr) => self.jmp(forward, addr),
+            Instruction::Jneq(forward, addr) => self.jneq(forward, addr),
+            Instruction::Jeq(forward, addr) => self.jeq(forward, addr),
+            Instruction::Jlt(forward, addr) => self.jlt(forward, addr),
+            Instruction::JltEq(forward, addr) => self.jlt_eq(forward, addr),
+            Instruction::Jgt(forward, addr) => self.jgt(forward, addr),
+            Instruction::JgtEq(forward, addr) => self.jgt_eq(forward, addr),
         }
-
-        Ok(())
     }
 
     /// Runs one execution cycle
@@ -353,7 +357,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *adds* them together and pushes the result
     /// back on the stack
-    pub fn add(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn add(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -392,7 +396,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *subtracts* the second from the first and
     /// pushes the result back on the stack
-    pub fn sub(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn sub(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -431,7 +435,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *multiplies* them and pushes the result
     /// back on the stack
-    pub fn mul(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn mul(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -470,7 +474,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, *divides* the first through the second and
     /// pushes the result back on the stack
-    pub fn div(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn div(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -501,7 +505,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, uses the second one to shift the bits
     /// of the first one to the *right* and pushes the result back onto the stack
-    pub fn shr(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn shr(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -548,7 +552,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, uses the second one to shift the bits
     /// of the first one to the *left* and pushes the result back onto the stack
-    pub fn shl(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn shl(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -591,7 +595,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, applies a *bitwise and* to both and
     /// pushes the result back onto the stack
-    pub fn and(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn and(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -614,7 +618,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, applies a *bitwise or* to both and
     /// pushes the result back onto the stack
-    pub fn or(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn or(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -637,7 +641,7 @@ impl VM {
 
     /// Pops two values of the given type off the stack, applies a *bitwise or* to both and
     /// pushes the result back onto the stack
-    pub fn xor(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn xor(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -659,7 +663,7 @@ impl VM {
     }
 
     /// Applies a *bitwise not* operation to the top stack value
-    pub fn not(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn not(&mut self, ty: IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -674,8 +678,8 @@ impl VM {
         }
     }
 
-    /// Applies a *negation* on the tio stack value
-    pub fn neg(&mut self, ty: &IntegerType) -> Result<()> {
+    /// Applies a *negation* on the top stack value
+    pub fn neg(&mut self, ty: IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -702,7 +706,7 @@ impl VM {
 
     /// *Compares* the top two values of the stack by applying a subtraction on them and saving the
     /// result in the cmp register
-    pub fn cmp(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn cmp(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 let (a, b) = self.pop_u8_lr()?;
@@ -752,7 +756,7 @@ impl VM {
     }
 
     /// *Increments* the top stack value
-    pub fn inc(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn inc(&mut self, ty: IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -798,7 +802,7 @@ impl VM {
     }
 
     /// *Decrements* the top stack value
-    pub fn dec(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn dec(&mut self, ty: IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -916,7 +920,7 @@ impl VM {
     }
 
     /// Loads the value from the given register and pushes it onto the stack
-    pub fn load_reg(&mut self, reg: &Register) -> Result<()> {
+    pub fn load_reg(&mut self, reg: Register) -> Result<()> {
         let ptr = match reg {
             Register::StackPtr => self.sp,
             Register::BasePtr => self.bp,
@@ -926,7 +930,7 @@ impl VM {
     }
 
     /// Loads the value from the given address and pushes it to the stack
-    pub fn load(&mut self, ty: &IntegerType, addr: Address) -> Result<()> {
+    pub fn load(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.read_u8(addr)?;
@@ -942,7 +946,7 @@ impl VM {
     }
 
     /// Like *load* but takes the address off the stack before storing
-    pub fn load_indirect(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn load_indirect(&mut self, ty: IntegerType) -> Result<()> {
         let addr = self.pop_u16()?;
         self.load(ty, addr)?;
 
@@ -950,7 +954,7 @@ impl VM {
     }
 
     /// Takes the top value off the stack and stores it at the given address
-    pub fn store(&mut self, ty: &IntegerType, addr: Address) -> Result<()> {
+    pub fn store(&mut self, ty: IntegerType, addr: Address) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.pop_u8()?;
@@ -966,7 +970,7 @@ impl VM {
     }
 
     /// Like *store* but takes the address off the stack before storing
-    pub fn store_indirect(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn store_indirect(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 | IntegerType::I8 => {
                 let value = self.pop_u8()?;
@@ -984,7 +988,7 @@ impl VM {
     }
 
     /// Duplicates the top stack value and pushes it onto the stack
-    pub fn dup(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn dup(&mut self, ty: IntegerType) -> Result<()> {
         let addr = self.sp;
 
         match ty {
@@ -1002,7 +1006,7 @@ impl VM {
     }
 
     /// Discards the top stack value
-    pub fn drop(&mut self, ty: &IntegerType) -> Result<()> {
+    pub fn drop(&mut self, ty: IntegerType) -> Result<()> {
         match ty {
             IntegerType::U8 => {
                 self.pop_u8()?;
@@ -1198,7 +1202,7 @@ mod tests {
         }
 
         pub fn program_builder() -> ProgramBuilder {
-            ProgramBuilder::new(BogusSystem::ID.to_owned())
+            ProgramBuilder::new(BogusSystem::ID)
                 .instructions(generate_instructions())
                 .mem_pages(63)
         }
@@ -1307,12 +1311,11 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn vm_without_program() {
         let mut vm = VM::default();
         vm.pc = 20;
 
-        vm.current_instruction().unwrap();
+        vm.current_instruction().unwrap_err();
     }
 
     #[test]
@@ -1340,17 +1343,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn mem_too_small() {
         let mut system = helper::generate_system();
         let program = helper::program_builder().mem_pages(1).gen();
 
         let mut vm = VM::default();
-        vm.exec(&program, &mut system).unwrap();
+        vm.exec(&program, &mut system).unwrap_err();
     }
 
     #[test]
-    #[should_panic]
     fn mem_too_big() {
         let mut system = helper::generate_system();
         let program = helper::program_builder()
@@ -1358,11 +1359,10 @@ mod tests {
             .gen();
 
         let mut vm = VM::default();
-        vm.exec(&program, &mut system).unwrap();
+        vm.exec(&program, &mut system).unwrap_err();
     }
 
     #[test]
-    #[should_panic]
     fn program_too_big() {
         let mut system = helper::generate_system();
         let program = helper::program_builder()
@@ -1372,7 +1372,7 @@ mod tests {
             ]).gen();
 
         let mut vm = VM::default();
-        vm.exec(&program, &mut system).unwrap();
+        vm.exec(&program, &mut system).unwrap_err();
     }
 
     #[test]

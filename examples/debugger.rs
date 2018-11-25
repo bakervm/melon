@@ -40,7 +40,7 @@ fn main() {
 
     let mut sys = MyPerfectSystem::new();
 
-    let program = ProgramBuilder::new(MyPerfectSystem::ID.into())
+    let program = ProgramBuilder::new(MyPerfectSystem::ID)
         .instructions(rng.sample_iter(&Standard).take(LIMIT).collect())
         .gen();
 

@@ -115,9 +115,9 @@ pub struct ProgramBuilder {
 
 impl ProgramBuilder {
     /// Creates a new `ProgramBuilder` with the given system_id
-    pub fn new(system_id: String) -> ProgramBuilder {
+    pub fn new(system_id: &str) -> ProgramBuilder {
         ProgramBuilder {
-            system_id,
+            system_id: system_id.into(),
             entry_point: 0,
             instructions: Vec::new(),
             mem_pages: None,
@@ -188,7 +188,7 @@ mod tests {
             .path()
             .join(PathBuf::from("test").with_extension(ROM_FILE_EXTENSION));
 
-        let program = ProgramBuilder::new("bogus_system".into())
+        let program = ProgramBuilder::new("bogus_system")
             .mem_pages(1)
             .instructions(rng.sample_iter(&Standard).take(100).collect())
             .gen_with_version("0.0.0");

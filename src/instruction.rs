@@ -6,7 +6,7 @@ use rand::{
 };
 use typedef::*;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum Instruction {
     Add(IntegerType),
     Sub(IntegerType),
@@ -111,7 +111,7 @@ impl Distribution<Instruction> for Standard {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum IntegerType {
     U8,
     U16,
@@ -133,7 +133,7 @@ impl Distribution<IntegerType> for Standard {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum Register {
     StackPtr,
     BasePtr,

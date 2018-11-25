@@ -24,9 +24,7 @@ impl System for TextConsole {
 fn create() {
     let mut virt = VM::default();
     virt.exec(
-        &ProgramBuilder::new(TextConsole::ID.into())
-            .mem_pages(20)
-            .gen(),
+        &ProgramBuilder::new(TextConsole::ID).mem_pages(20).gen(),
         &mut TextConsole::new(),
     ).unwrap();
 }
@@ -36,9 +34,7 @@ fn wrong_system_id() {
     let mut virt = VM::default();
 
     virt.exec(
-        &ProgramBuilder::new("__PIXEL_DISPLAY__".into())
-            .mem_pages(20)
-            .gen(),
+        &ProgramBuilder::new("__PIXEL_DISPLAY__").mem_pages(20).gen(),
         &mut TextConsole::new(),
     ).unwrap_err();
 }
