@@ -26,7 +26,8 @@ fn create() {
     virt.exec(
         &ProgramBuilder::new(TextConsole::ID).mem_pages(20).gen(),
         &mut TextConsole::new(),
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 #[test]
@@ -38,5 +39,6 @@ fn wrong_system_id() {
             .mem_pages(20)
             .gen(),
         &mut TextConsole::new(),
-    ).unwrap_err();
+    )
+    .unwrap_err();
 }
