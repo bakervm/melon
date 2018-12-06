@@ -38,7 +38,7 @@ use vm::VM;
 /// }
 ///
 /// impl System for TextSystem {
-///     const ID: &'static str = "__TEXT_SYSTEM__";
+///     const ID: &'static str = "com.example.text-system";
 ///
 ///     const MEM_PAGES: u8 = 1;
 ///

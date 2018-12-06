@@ -15,7 +15,7 @@ impl TextConsole {
 }
 
 impl System for TextConsole {
-    const ID: &'static str = "__TEXT_CONSOLE__";
+    const ID: &'static str = "com.example.text-console";
 
     const MEM_PAGES: u8 = 1;
 }
@@ -34,7 +34,9 @@ fn wrong_system_id() {
     let mut virt = VM::default();
 
     virt.exec(
-        &ProgramBuilder::new("__PIXEL_DISPLAY__").mem_pages(20).gen(),
+        &ProgramBuilder::new("com.example.pixel-display")
+            .mem_pages(20)
+            .gen(),
         &mut TextConsole::new(),
     ).unwrap_err();
 }

@@ -1172,7 +1172,7 @@ mod tests {
         }
 
         impl System for BogusSystem {
-            const ID: &'static str = "__BOGUS_SYSTEM__";
+            const ID: &'static str = "com.bogus.system";
 
             const MEM_PAGES: u8 = 1;
         }

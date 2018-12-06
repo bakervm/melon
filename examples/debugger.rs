@@ -18,7 +18,7 @@ impl MyPerfectSystem {
 }
 
 impl System for MyPerfectSystem {
-    const ID: &'static str = "__WORMHOLE__";
+    const ID: &'static str = "com.example.wormhole";
 
     const MEM_PAGES: u8 = 8;
 

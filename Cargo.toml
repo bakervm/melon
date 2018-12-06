@@ -20,6 +20,7 @@ rustyline = "^2.1"
 colored = "^1.6"
 semver = { version = "^0.9", features = ["serde"] }
 lazy_static = "^1.2"
+bytesize = "1.0.0"
 
 [dev-dependencies]
 tempfile = "^3.0"

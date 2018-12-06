@@ -26,6 +26,7 @@ extern crate colored;
 extern crate flate2;
 #[macro_use]
 extern crate lazy_static;
+extern crate bytesize;
 extern crate rmp_serde as rmps;
 extern crate rustyline;
 extern crate semver;
