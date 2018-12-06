@@ -1,11 +1,11 @@
-use bytesize::ByteSize;
-use colored::*;
 use crate::program::Program;
-use rustyline::Editor;
-use std::{thread, time::Duration};
 use crate::system::System;
 use crate::typedef::*;
 use crate::vm::VM;
+use bytesize::ByteSize;
+use colored::*;
+use rustyline::Editor;
+use std::{thread, time::Duration};
 
 #[derive(Default)]
 /// A simple interactive debugger for melon systems

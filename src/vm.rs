@@ -1,11 +1,11 @@
-use byteorder::{BigEndian, ByteOrder};
 use crate::consts;
-use failure::ResultExt;
 use crate::instruction::{Instruction, IntegerType, Register};
 use crate::program::Program;
-use std::collections::LinkedList;
 use crate::system::System;
 use crate::typedef::*;
+use byteorder::{BigEndian, ByteOrder};
+use failure::ResultExt;
+use std::collections::LinkedList;
 
 type Endianess = BigEndian;
 

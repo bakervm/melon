@@ -1,5 +1,3 @@
-
-
 use melon::{ProgramBuilder, System, VM};
 
 struct TextConsole {

@@ -1,6 +1,3 @@
-
-
-
 use melon::typedef::*;
 use melon::{Debugger, ProgramBuilder, System, VM};
 use rand::{distributions::Standard, thread_rng, Rng};
