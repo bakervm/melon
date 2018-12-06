@@ -1213,7 +1213,7 @@ mod tests {
         let mut rng = thread_rng();
 
         for _ in 0..300 {
-            let mut max = rng.gen_range(10, 300);
+            let max = rng.gen_range(10, 300);
 
             let mut test_data: Vec<u8> = (0..max).map(|_| rng.gen()).collect();
 

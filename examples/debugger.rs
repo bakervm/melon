@@ -1,5 +1,5 @@
-extern crate melon;
-extern crate rand;
+
+
 
 use melon::typedef::*;
 use melon::{Debugger, ProgramBuilder, System, VM};

@@ -29,7 +29,7 @@ enum RunMode {
     Forward { cycle: usize },
 }
 
-struct DebuggerSystem<'a, T: 'a + System> {
+struct DebuggerSystem<'a, T: System> {
     mode: RunMode,
     editor: Editor<()>,
     sub: &'a mut T,
@@ -37,7 +37,7 @@ struct DebuggerSystem<'a, T: 'a + System> {
 }
 
 impl<'a, T: System> DebuggerSystem<'a, T> {
-    pub fn new(sub: &mut T) -> DebuggerSystem<T> {
+    pub fn new(sub: &mut T) -> DebuggerSystem<'_, T> {
         DebuggerSystem {
             mode: RunMode::Normal,
             editor: Editor::<()>::new(),

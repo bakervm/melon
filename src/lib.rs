@@ -15,21 +15,12 @@
 //! [system]: trait.System.html
 //! [program]: struct.Program.html
 
-extern crate byteorder;
 #[macro_use]
 extern crate failure;
-extern crate rand;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate colored;
-extern crate flate2;
 #[macro_use]
 extern crate lazy_static;
-extern crate bytesize;
-extern crate rmp_serde as rmps;
-extern crate rustyline;
-extern crate semver;
 
 mod consts;
 mod debugger;

@@ -1,4 +1,4 @@
-extern crate melon;
+
 
 use melon::{ProgramBuilder, System, VM};
 

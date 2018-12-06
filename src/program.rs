@@ -1,7 +1,8 @@
 use crate::consts;
-use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use crate::instruction::Instruction;
-use crate::rmps::{Deserializer, Serializer};
+use crate::typedef::*;
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+use rmp_serde::{Deserializer, Serializer};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -9,7 +10,6 @@ use std::{
     io::{Read, Write},
     path::Path,
 };
-use crate::typedef::*;
 
 /// The container for a program
 ///
@@ -168,7 +168,7 @@ impl ProgramBuilder {
 
 #[cfg(test)]
 mod tests {
-    extern crate tempfile;
+    use tempfile;
 
     use self::tempfile::TempDir;
     use super::*;
