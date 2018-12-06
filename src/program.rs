@@ -168,12 +168,10 @@ impl ProgramBuilder {
 
 #[cfg(test)]
 mod tests {
-    use tempfile;
-
-    use self::tempfile::TempDir;
     use super::*;
     use rand::{distributions::Standard, thread_rng, Rng};
     use std::path::PathBuf;
+    use tempfile::TempDir;
 
     fn gen_dir() -> TempDir {
         tempfile::tempdir().expect("unable to create temporary directory")

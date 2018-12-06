@@ -1213,9 +1213,9 @@ mod tests {
         let mut rng = thread_rng();
 
         for _ in 0..300 {
-            let max = rng.gen_range(10, 300);
+            let max: u16 = rng.gen_range(10, 300);
 
-            let mut test_data: Vec<u8> = (0..max).map(|_| rng.gen()).collect();
+            let mut test_data: Vec<u8> = rng.sample_iter(&Standard).take(max.into()).collect();
 
             let addr_front_byte: u16 = rng.gen_range(0, max - 2);
             let addr_back_byte: u16 = addr_front_byte + 1;
