@@ -41,7 +41,7 @@ impl<'a, T: System> DebuggerSystem<'a, T> {
         DebuggerSystem {
             mode: RunMode::Normal,
             editor: Editor::<()>::new(),
-            sub: sub,
+            sub,
             cycle_count: 0,
         }
     }
