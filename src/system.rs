@@ -1,5 +1,5 @@
-use typedef::*;
-use vm::VM;
+use crate::typedef::*;
+use crate::vm::VM;
 
 #[allow(unused_variables)]
 /// An interface to communicate with the VM

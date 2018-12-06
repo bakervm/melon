@@ -39,8 +39,8 @@ mod system;
 pub mod typedef;
 mod vm;
 
-pub use debugger::*;
-pub use instruction::*;
-pub use program::*;
-pub use system::*;
-pub use vm::*;
+pub use crate::debugger::*;
+pub use crate::instruction::*;
+pub use crate::program::*;
+pub use crate::system::*;
+pub use crate::vm::*;

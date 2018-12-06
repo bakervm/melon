@@ -4,7 +4,7 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use typedef::*;
+use crate::typedef::*;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum Instruction {

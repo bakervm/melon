@@ -1,11 +1,11 @@
 use byteorder::{BigEndian, ByteOrder};
-use consts;
+use crate::consts;
 use failure::ResultExt;
-use instruction::{Instruction, IntegerType, Register};
-use program::Program;
+use crate::instruction::{Instruction, IntegerType, Register};
+use crate::program::Program;
 use std::collections::LinkedList;
-use system::System;
-use typedef::*;
+use crate::system::System;
+use crate::typedef::*;
 
 type Endianess = BigEndian;
 
@@ -1157,14 +1157,14 @@ impl VM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use instruction::{Instruction, IntegerType};
+    use crate::instruction::{Instruction, IntegerType};
     use rand::distributions::Standard;
     use rand::{thread_rng, Rng};
 
     mod helper {
-        use instruction::{Instruction, IntegerType, Register};
-        use program::ProgramBuilder;
-        use system::System;
+        use crate::instruction::{Instruction, IntegerType, Register};
+        use crate::program::ProgramBuilder;
+        use crate::system::System;
 
         #[derive(Default, Clone)]
         pub struct BogusSystem {

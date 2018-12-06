@@ -1,7 +1,7 @@
-use consts;
+use crate::consts;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use instruction::Instruction;
-use rmps::{Deserializer, Serializer};
+use crate::instruction::Instruction;
+use crate::rmps::{Deserializer, Serializer};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -9,7 +9,7 @@ use std::{
     io::{Read, Write},
     path::Path,
 };
-use typedef::*;
+use crate::typedef::*;
 
 /// The container for a program
 ///
