@@ -14,20 +14,17 @@ pub const ROM_FILE_EXTENSION: &str = "rom";
 pub enum VMError {
     #[fail(
         display = "wrong system ID. Runtime: {:?} Program: {:?}",
-        runtime,
-        program
+        runtime, program
     )]
     WrongSystemId { program: String, runtime: String },
     #[fail(
         display = "wrong target version. Runtime: {:?} Program: {:?}",
-        runtime,
-        program
+        runtime, program
     )]
     WrongTargetVersion { program: String, runtime: String },
     #[fail(
         display = "requested memory too big. Requested pages: {}. Maximum number of pages: {}",
-        requested,
-        max
+        requested, max
     )]
     RequestedMemoryTooBig { requested: u8, max: u8 },
     #[fail(display = "requested memory too small. Number of memory pages has to be at least one")]

@@ -1,10 +1,10 @@
 #![allow(missing_docs)]
 
+use crate::typedef::*;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use typedef::*;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum Instruction {

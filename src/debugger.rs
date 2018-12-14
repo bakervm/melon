@@ -1,10 +1,11 @@
+use crate::program::Program;
+use crate::system::System;
+use crate::typedef::*;
+use crate::vm::VM;
+use bytesize::ByteSize;
 use colored::*;
-use program::Program;
 use rustyline::Editor;
 use std::{thread, time::Duration};
-use system::System;
-use typedef::*;
-use vm::VM;
 
 #[derive(Default)]
 /// A simple interactive debugger for melon systems
@@ -25,21 +26,28 @@ enum RunMode {
     Run { delay: u64 },
     Step,
     Normal,
+    Forward { cycle: usize },
 }
 
-struct DebuggerSystem<'a, T: 'a + System> {
+struct DebuggerSystem<'a, T: System> {
     mode: RunMode,
     editor: Editor<()>,
     sub: &'a mut T,
+    cycle_count: usize,
 }
 
 impl<'a, T: System> DebuggerSystem<'a, T> {
-    pub fn new(sub: &mut T) -> DebuggerSystem<T> {
+    pub fn new(sub: &mut T) -> DebuggerSystem<'_, T> {
         DebuggerSystem {
             mode: RunMode::Normal,
             editor: Editor::<()>::new(),
-            sub: sub,
+            sub,
+            cycle_count: 0,
         }
+    }
+
+    fn reset_mode(&mut self) {
+        self.mode = RunMode::Normal;
     }
 }
 
@@ -53,10 +61,13 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
 
         println!();
 
-        let mem_line = format!("VM memory: {} bytes", vm.mem.len());
+        let mem_line = format!("VM memory: {}", ByteSize(vm.mem.len() as u64));
         println!("{}", mem_line.cyan());
 
-        let prog_line = format!("Program memory: {} bytes", vm.program.len() * 4);
+        let prog_line = format!(
+            "Program memory: {}",
+            ByteSize((vm.program.len() * 4) as u64)
+        );
         println!("{}", prog_line.cyan());
         println!();
 
@@ -68,16 +79,33 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
 
         let next_instruction = vm.current_instruction()?;
         let prompt = format!(
-            "[{}] {} > ",
+            "[#{}] {} > ",
             format!("{:04X}", vm.pc).red(),
             format!("{:?}", next_instruction).green()
         );
 
         loop {
-            if let RunMode::Run { delay } = self.mode {
-                println!("{}", prompt);
-                thread::sleep(Duration::from_millis(delay));
-                break;
+            match self.mode {
+                RunMode::Run { delay } => {
+                    println!("{}", prompt);
+                    thread::sleep(Duration::from_millis(delay));
+                    break;
+                }
+                RunMode::Forward { cycle } => {
+                    if cycle > 0 {
+                        self.mode = RunMode::Forward { cycle: cycle - 1 };
+                        break;
+                    }
+
+                    println!(
+                        "Forwarded {} cycles to address #{}",
+                        cycle,
+                        format!("{:04X}", vm.pc).red()
+                    );
+
+                    self.reset_mode();
+                }
+                _ => {}
             }
 
             let readline = self.editor.readline(&prompt);
@@ -117,6 +145,17 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
                     println!("Running...");
                     println!();
                 }
+                "forward" | "f" => {
+                    let readline = self.editor.readline("Forward N cycles: ")?;
+
+                    if readline.is_empty() {
+                        continue;
+                    }
+
+                    self.mode = RunMode::Forward {
+                        cycle: readline.parse()?,
+                    };
+                }
                 "rund" => {
                     self.mode = RunMode::Run { delay: 500 };
                     println!("Running with delayed steps...");
@@ -124,7 +163,7 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
                 }
                 "step" | "s" => {
                     if let RunMode::Step = self.mode {
-                        self.mode = RunMode::Normal;
+                        self.reset_mode();
                         println!("Stepmode OFF");
                         println!();
                     } else {
@@ -169,13 +208,15 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
     fn post_cycle(&mut self, vm: &mut VM) -> Result<()> {
         self.sub.post_cycle(vm)?;
 
+        self.cycle_count += 1;
+
         Ok(())
     }
 
     fn finish(&mut self, vm: &mut VM) -> Result<()> {
         self.sub.finish(vm)?;
 
-        self.mode = RunMode::Normal;
+        self.reset_mode();
 
         Ok(())
     }

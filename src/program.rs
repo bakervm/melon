@@ -1,7 +1,8 @@
-use consts;
+use crate::consts;
+use crate::instruction::Instruction;
+use crate::typedef::*;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use instruction::Instruction;
-use rmps::{Deserializer, Serializer};
+use rmp_serde::{Deserializer, Serializer};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -9,7 +10,6 @@ use std::{
     io::{Read, Write},
     path::Path,
 };
-use typedef::*;
 
 /// The container for a program
 ///
@@ -168,12 +168,10 @@ impl ProgramBuilder {
 
 #[cfg(test)]
 mod tests {
-    extern crate tempfile;
-
-    use self::tempfile::TempDir;
     use super::*;
     use rand::{distributions::Standard, thread_rng, Rng};
     use std::path::PathBuf;
+    use tempfile::TempDir;
 
     fn gen_dir() -> TempDir {
         tempfile::tempdir().expect("unable to create temporary directory")

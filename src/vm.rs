@@ -1,11 +1,11 @@
+use crate::consts;
+use crate::instruction::{Instruction, IntegerType, Register};
+use crate::program::Program;
+use crate::system::System;
+use crate::typedef::*;
 use byteorder::{BigEndian, ByteOrder};
-use consts;
 use failure::ResultExt;
-use instruction::{Instruction, IntegerType, Register};
-use program::Program;
 use std::collections::LinkedList;
-use system::System;
-use typedef::*;
 
 type Endianess = BigEndian;
 
@@ -1157,14 +1157,14 @@ impl VM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use instruction::{Instruction, IntegerType};
+    use crate::instruction::{Instruction, IntegerType};
     use rand::distributions::Standard;
     use rand::{thread_rng, Rng};
 
     mod helper {
-        use instruction::{Instruction, IntegerType, Register};
-        use program::ProgramBuilder;
-        use system::System;
+        use crate::instruction::{Instruction, IntegerType, Register};
+        use crate::program::ProgramBuilder;
+        use crate::system::System;
 
         #[derive(Default, Clone)]
         pub struct BogusSystem {
@@ -1172,7 +1172,7 @@ mod tests {
         }
 
         impl System for BogusSystem {
-            const ID: &'static str = "__BOGUS_SYSTEM__";
+            const ID: &'static str = "com.bogus.system";
 
             const MEM_PAGES: u8 = 1;
         }
@@ -1213,9 +1213,9 @@ mod tests {
         let mut rng = thread_rng();
 
         for _ in 0..300 {
-            let mut max = rng.gen_range(10, 300);
+            let max: u16 = rng.gen_range(10, 300);
 
-            let mut test_data: Vec<u8> = (0..max).map(|_| rng.gen()).collect();
+            let mut test_data: Vec<u8> = rng.sample_iter(&Standard).take(max.into()).collect();
 
             let addr_front_byte: u16 = rng.gen_range(0, max - 2);
             let addr_back_byte: u16 = addr_front_byte + 1;
@@ -1369,7 +1369,8 @@ mod tests {
             .instructions(vec![
                 Instruction::SysCall(123);
                 (u16::max_value() as usize) + 2
-            ]).gen();
+            ])
+            .gen();
 
         let mut vm = VM::default();
         vm.exec(&program, &mut system).unwrap_err();
@@ -1414,7 +1415,8 @@ mod tests {
                 Instruction::PushConstU8(50),
                 Instruction::PushConstU8(50),
                 Instruction::Add(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1425,7 +1427,8 @@ mod tests {
                 Instruction::PushConstU16(2500),
                 Instruction::PushConstU16(1000),
                 Instruction::Add(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1436,7 +1439,8 @@ mod tests {
                 Instruction::PushConstI8(50),
                 Instruction::PushConstI8(-20),
                 Instruction::Add(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1447,7 +1451,8 @@ mod tests {
                 Instruction::PushConstI16(50),
                 Instruction::PushConstI16(1000),
                 Instruction::Add(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1464,7 +1469,8 @@ mod tests {
                 Instruction::PushConstU8(100),
                 Instruction::PushConstU8(50),
                 Instruction::Sub(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1475,7 +1481,8 @@ mod tests {
                 Instruction::PushConstU16(2500),
                 Instruction::PushConstU16(1000),
                 Instruction::Sub(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1486,7 +1493,8 @@ mod tests {
                 Instruction::PushConstI8(50),
                 Instruction::PushConstI8(100),
                 Instruction::Sub(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1497,7 +1505,8 @@ mod tests {
                 Instruction::PushConstI16(50),
                 Instruction::PushConstI16(1000),
                 Instruction::Sub(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1514,7 +1523,8 @@ mod tests {
                 Instruction::PushConstU8(8),
                 Instruction::PushConstU8(8),
                 Instruction::Mul(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1525,7 +1535,8 @@ mod tests {
                 Instruction::PushConstU16(150),
                 Instruction::PushConstU16(150),
                 Instruction::Mul(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1536,7 +1547,8 @@ mod tests {
                 Instruction::PushConstI8(13),
                 Instruction::PushConstI8(-4),
                 Instruction::Mul(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1547,7 +1559,8 @@ mod tests {
                 Instruction::PushConstI16(-50),
                 Instruction::PushConstI16(100),
                 Instruction::Mul(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1564,7 +1577,8 @@ mod tests {
                 Instruction::PushConstU8(8),
                 Instruction::PushConstU8(4),
                 Instruction::Div(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1575,7 +1589,8 @@ mod tests {
                 Instruction::PushConstU16(1500),
                 Instruction::PushConstU16(500),
                 Instruction::Div(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1586,7 +1601,8 @@ mod tests {
                 Instruction::PushConstI8(13),
                 Instruction::PushConstI8(-4),
                 Instruction::Div(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1597,7 +1613,8 @@ mod tests {
                 Instruction::PushConstI16(1000),
                 Instruction::PushConstI16(-50),
                 Instruction::Div(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1614,7 +1631,8 @@ mod tests {
                 Instruction::PushConstU8(8),
                 Instruction::PushConstU8(3),
                 Instruction::Shr(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1625,7 +1643,8 @@ mod tests {
                 Instruction::PushConstU16(16),
                 Instruction::PushConstU16(1),
                 Instruction::Shr(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1636,7 +1655,8 @@ mod tests {
                 Instruction::PushConstI8(32),
                 Instruction::PushConstI8(2),
                 Instruction::Shr(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1647,7 +1667,8 @@ mod tests {
                 Instruction::PushConstI16(128),
                 Instruction::PushConstI16(4),
                 Instruction::Shr(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1664,7 +1685,8 @@ mod tests {
                 Instruction::PushConstU8(1),
                 Instruction::PushConstU8(4),
                 Instruction::Shl(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1675,7 +1697,8 @@ mod tests {
                 Instruction::PushConstU16(1),
                 Instruction::PushConstU16(8),
                 Instruction::Shl(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1686,7 +1709,8 @@ mod tests {
                 Instruction::PushConstI8(1),
                 Instruction::PushConstI8(3),
                 Instruction::Shl(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1697,7 +1721,8 @@ mod tests {
                 Instruction::PushConstI16(1),
                 Instruction::PushConstI16(2),
                 Instruction::Shl(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1714,7 +1739,8 @@ mod tests {
                 Instruction::PushConstU8(0b0101_0101),
                 Instruction::PushConstU8(0xFF),
                 Instruction::And(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1725,7 +1751,8 @@ mod tests {
                 Instruction::PushConstU16(0b1010_1010_1010_1010),
                 Instruction::PushConstU16(0xFFFF),
                 Instruction::And(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1736,7 +1763,8 @@ mod tests {
                 Instruction::PushConstI8(0b0101),
                 Instruction::PushConstI8(0x0F),
                 Instruction::And(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1747,7 +1775,8 @@ mod tests {
                 Instruction::PushConstI16(0b0101_0101),
                 Instruction::PushConstI16(0xFF),
                 Instruction::And(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1764,7 +1793,8 @@ mod tests {
                 Instruction::PushConstU8(0xFF),
                 Instruction::PushConstU8(0x00),
                 Instruction::Or(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1775,7 +1805,8 @@ mod tests {
                 Instruction::PushConstU16(0xFF00),
                 Instruction::PushConstU16(0x00FF),
                 Instruction::Or(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1786,7 +1817,8 @@ mod tests {
                 Instruction::PushConstI8(0x0F),
                 Instruction::PushConstI8(0x00),
                 Instruction::Or(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1797,7 +1829,8 @@ mod tests {
                 Instruction::PushConstI16(0x00FF),
                 Instruction::PushConstI16(0x0000),
                 Instruction::Or(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1814,7 +1847,8 @@ mod tests {
                 Instruction::PushConstU8(0xFF),
                 Instruction::PushConstU8(0x00),
                 Instruction::Xor(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1825,7 +1859,8 @@ mod tests {
                 Instruction::PushConstU16(0xFF00),
                 Instruction::PushConstU16(0x00FF),
                 Instruction::Xor(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1836,7 +1871,8 @@ mod tests {
                 Instruction::PushConstI8(0x0F),
                 Instruction::PushConstI8(0x00),
                 Instruction::Xor(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1847,7 +1883,8 @@ mod tests {
                 Instruction::PushConstI16(0x00FF),
                 Instruction::PushConstI16(0x0000),
                 Instruction::Xor(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1863,7 +1900,8 @@ mod tests {
             .instructions(vec![
                 Instruction::PushConstU8(0x0F),
                 Instruction::Not(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1873,7 +1911,8 @@ mod tests {
             .instructions(vec![
                 Instruction::PushConstU16(0xFF00),
                 Instruction::Not(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1883,7 +1922,8 @@ mod tests {
             .instructions(vec![
                 Instruction::PushConstI8(0x0F),
                 Instruction::Not(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1893,7 +1933,8 @@ mod tests {
             .instructions(vec![
                 Instruction::PushConstI16(0x00FF),
                 Instruction::Not(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1909,7 +1950,8 @@ mod tests {
             .instructions(vec![
                 Instruction::PushConstI8(104),
                 Instruction::Neg(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1919,7 +1961,8 @@ mod tests {
             .instructions(vec![
                 Instruction::PushConstI16(-1234),
                 Instruction::Neg(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1948,7 +1991,8 @@ mod tests {
                 Instruction::PushConstU8(104),
                 Instruction::PushConstU8(98),
                 Instruction::Cmp(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1961,7 +2005,8 @@ mod tests {
                 Instruction::PushConstU16(20000),
                 Instruction::PushConstU16(20000),
                 Instruction::Cmp(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1974,7 +2019,8 @@ mod tests {
                 Instruction::PushConstI8(-32),
                 Instruction::PushConstI8(-64),
                 Instruction::Cmp(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -1987,7 +2033,8 @@ mod tests {
                 Instruction::PushConstI16(-3200),
                 Instruction::PushConstI16(-6400),
                 Instruction::Cmp(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2008,7 +2055,8 @@ mod tests {
                 Instruction::Inc(IntegerType::U8),
                 Instruction::Inc(IntegerType::U8),
                 Instruction::Inc(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2022,7 +2070,8 @@ mod tests {
                 Instruction::Inc(IntegerType::U16),
                 Instruction::Inc(IntegerType::U16),
                 Instruction::Inc(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2047,7 +2096,8 @@ mod tests {
                 Instruction::Inc(IntegerType::I8),
                 Instruction::Inc(IntegerType::I8),
                 Instruction::Inc(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2060,7 +2110,8 @@ mod tests {
                 Instruction::Inc(IntegerType::I16),
                 Instruction::Inc(IntegerType::I16),
                 Instruction::Inc(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2079,7 +2130,8 @@ mod tests {
                 Instruction::Dec(IntegerType::U8),
                 Instruction::Dec(IntegerType::U8),
                 Instruction::Dec(IntegerType::U8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2093,7 +2145,8 @@ mod tests {
                 Instruction::Dec(IntegerType::U16),
                 Instruction::Dec(IntegerType::U16),
                 Instruction::Dec(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2118,7 +2171,8 @@ mod tests {
                 Instruction::Dec(IntegerType::I8),
                 Instruction::Dec(IntegerType::I8),
                 Instruction::Dec(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2131,7 +2185,8 @@ mod tests {
                 Instruction::Dec(IntegerType::I16),
                 Instruction::Dec(IntegerType::I16),
                 Instruction::Dec(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2168,7 +2223,8 @@ mod tests {
             .instructions(vec![
                 Instruction::PushConstI16(-120),
                 Instruction::I16Demote,
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
         assert_eq!(vm.pop_i8().unwrap(), -120);
@@ -2188,7 +2244,8 @@ mod tests {
                 Instruction::Jmp(true, 1),
                 Instruction::Jmp(true, 2),
                 Instruction::Jmp(false, 5),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2199,7 +2256,8 @@ mod tests {
                 Instruction::PushConstU8(1),
                 Instruction::Cmp(IntegerType::U8),
                 Instruction::Jgt(true, 100),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2210,7 +2268,8 @@ mod tests {
                 Instruction::PushConstI8(2),
                 Instruction::Cmp(IntegerType::I8),
                 Instruction::Jlt(true, 100),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2221,7 +2280,8 @@ mod tests {
                 Instruction::PushConstU8(2),
                 Instruction::Cmp(IntegerType::U8),
                 Instruction::Jeq(true, 100),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2232,7 +2292,8 @@ mod tests {
                 Instruction::PushConstU8(20),
                 Instruction::Cmp(IntegerType::U8),
                 Instruction::Jneq(true, 100),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2251,7 +2312,8 @@ mod tests {
                 Instruction::PushConstU16(1),
                 Instruction::Add(IntegerType::U16),
                 Instruction::LoadIndirect(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2271,7 +2333,8 @@ mod tests {
                 Instruction::Drop(IntegerType::I8),
                 Instruction::Drop(IntegerType::U16),
                 Instruction::Dup(IntegerType::I16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2286,7 +2349,8 @@ mod tests {
                 Instruction::Drop(IntegerType::I16),
                 Instruction::Drop(IntegerType::U8),
                 Instruction::Dup(IntegerType::I8),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2323,7 +2387,8 @@ mod tests {
                 Instruction::Sub(IntegerType::I16),
                 Instruction::Store(IntegerType::I16, 0x0000),
                 Instruction::Ret,
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2351,7 +2416,8 @@ mod tests {
                 Instruction::PushConstU16(0xAABB),
                 Instruction::Drop(IntegerType::U8),
                 Instruction::Drop(IntegerType::U16),
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
     }
@@ -2369,7 +2435,8 @@ mod tests {
                 Instruction::Free,
                 Instruction::Alloc(20),
                 Instruction::Free,
-            ]).gen();
+            ])
+            .gen();
 
         vm.exec(&program, &mut system).unwrap();
 
@@ -2386,7 +2453,8 @@ mod tests {
                 Instruction::Alloc(600),
                 Instruction::PushConstU16(0xFFFF),
                 Instruction::Jmp(false, 1),
-            ]).mem_pages(1)
+            ])
+            .mem_pages(1)
             .gen();
 
         vm.exec(&program, &mut system).unwrap_err();
@@ -2415,6 +2483,7 @@ mod tests {
                 .mem_pages(20)
                 .gen_with_version("0.0.0"),
             &mut system,
-        ).unwrap_err();
+        )
+        .unwrap_err();
     }
 }

@@ -6,6 +6,7 @@ description = "A library for creating retro computing platforms"
 repository = "https://github.com/bakervm/melon"
 readme = "README.md"
 license = "MIT"
+edition = "2018"
 
 [dependencies]
 byteorder = "^1.2"
@@ -20,6 +21,7 @@ rustyline = "^2.1"
 colored = "^1.6"
 semver = { version = "^0.9", features = ["serde"] }
 lazy_static = "^1.2"
+bytesize = "1.0.0"
 
 [dev-dependencies]
 tempfile = "^3.0"
