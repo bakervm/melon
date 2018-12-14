@@ -1,6 +1,6 @@
 //! A sample debugger implementation for testing the debugger itself.
 
-use melon::{Instruction, Debugger, System, ProgramBuilder};
+use melon::{Debugger, Instruction, ProgramBuilder, System};
 
 pub struct DumbSystem;
 
@@ -11,7 +11,7 @@ impl System for DumbSystem {
 }
 
 fn main() {
-    let dumb_program = ProgramBuilder::new("org.test.dumb")
+    let dumb_program = ProgramBuilder::new(DumbSystem::ID)
         .instructions(vec![Instruction::SysCall(0)])
         .gen();
 
