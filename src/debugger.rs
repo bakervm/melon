@@ -33,7 +33,6 @@ struct DebuggerSystem<'a, T: System> {
     mode: RunMode,
     editor: Editor<()>,
     sub: &'a mut T,
-    cycle_count: usize,
 }
 
 impl<'a, T: System> DebuggerSystem<'a, T> {
@@ -42,7 +41,6 @@ impl<'a, T: System> DebuggerSystem<'a, T> {
             mode: RunMode::Normal,
             editor: Editor::<()>::new(),
             sub,
-            cycle_count: 0,
         }
     }
 
@@ -108,16 +106,12 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
                 _ => {}
             }
 
-            let readline = self.editor.readline(&prompt);
+            let input = self.editor.readline(&prompt).map_err(|e| {
+                vm.return_value = 1;
+                vm.halt();
 
-            let input = match readline {
-                Ok(line) => line,
-                Err(_) => {
-                    vm.return_value = 1;
-                    vm.halt();
-                    break;
-                }
-            };
+                format_err!("unable to read input: {}", e)
+            })?;
 
             self.editor.add_history_entry(input.trim());
 
@@ -207,8 +201,6 @@ impl<'a, T: System> System for DebuggerSystem<'a, T> {
 
     fn post_cycle(&mut self, vm: &mut VM) -> Result<()> {
         self.sub.post_cycle(vm)?;
-
-        self.cycle_count += 1;
 
         Ok(())
     }

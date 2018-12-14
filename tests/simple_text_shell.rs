@@ -20,23 +20,22 @@ impl System for TextConsole {
 
 #[test]
 fn create() {
-    let mut virt = VM::default();
-    virt.exec(
-        &ProgramBuilder::new(TextConsole::ID).mem_pages(20).gen(),
-        &mut TextConsole::new(),
-    )
-    .unwrap();
+    VM::default()
+        .exec(
+            &ProgramBuilder::new(TextConsole::ID).mem_pages(20).gen(),
+            &mut TextConsole::new(),
+        )
+        .unwrap();
 }
 
 #[test]
 fn wrong_system_id() {
-    let mut virt = VM::default();
-
-    virt.exec(
-        &ProgramBuilder::new("com.example.pixel-display")
-            .mem_pages(20)
-            .gen(),
-        &mut TextConsole::new(),
-    )
-    .unwrap_err();
+    VM::default()
+        .exec(
+            &ProgramBuilder::new("com.example.pixel-display")
+                .mem_pages(20)
+                .gen(),
+            &mut TextConsole::new(),
+        )
+        .unwrap_err();
 }
