@@ -2,9 +2,7 @@ use crate::consts;
 use crate::instruction::Instruction;
 use crate::typedef::*;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use rmp_serde::{Deserializer, Serializer};
 use semver::Version;
-use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -49,17 +47,12 @@ impl Program {
         let mut msgpack_buf = Vec::new();
         decoder.read_to_end(&mut msgpack_buf)?;
 
-        let mut de = Deserializer::new(&msgpack_buf[..]);
-
-        let res = Deserialize::deserialize(&mut de)?;
-
-        Ok(res)
+        rmp_serde::from_slice(&msgpack_buf[..]).map_err(|e| format_err!("Error: {}", e))
     }
 
     /// Encodes the program as MsgPack encoded and gzipped image data
     pub fn to_vec(&self) -> Result<Vec<u8>> {
-        let mut msgpack_buf = Vec::new();
-        self.serialize(&mut Serializer::new(&mut msgpack_buf))?;
+        let msgpack_buf = rmp_serde::to_vec(&self)?;
 
         let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
         encoder.write_all(&msgpack_buf[..])?;
