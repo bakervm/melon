@@ -17,7 +17,7 @@ rand = "^0.6"
 rmp-serde = "^0.13"
 flate2 = "^1.0"
 structopt = "^0.2"
-rustyline = "^2.1"
+rustyline = "^3.0"
 colored = "^1.6"
 semver = { version = "^0.9", features = ["serde"] }
 lazy_static = "^1.2"

@@ -35,14 +35,12 @@ impl System for MyPerfectSystem {
 fn main() {
     let mut rng = thread_rng();
 
-    let mut sys = MyPerfectSystem::new();
-
     let program = ProgramBuilder::new(MyPerfectSystem::ID)
         .instructions(rng.sample_iter(&Standard).take(LIMIT).collect())
         .gen();
 
     let exit_code = Debugger::default()
-        .exec(&program, &mut sys)
+        .exec(&program, &mut MyPerfectSystem::new())
         .unwrap_or_else(|e| {
             eprintln!("Error: {}", e);
             1
