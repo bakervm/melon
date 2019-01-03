@@ -5,11 +5,7 @@ lazy_static! {
     /// The current version of the melon crate
     pub static ref VERSION: Version = env!("CARGO_PKG_VERSION").parse().unwrap();
     pub static ref VERSION_REQ: VersionReq = {
-        let mut version_string: String = env!("CARGO_PKG_VERSION")
-            .split('.')
-            .take(2)
-            .collect::<Vec<_>>()
-            .join(".");
+        let mut version_string: String = vec![VERSION.major.to_string(), VERSION.minor.to_string()].join(".");
 
         version_string.insert(0, '^');
 

@@ -14,7 +14,8 @@ pub struct Debugger {
 }
 
 impl Debugger {
-    /// Executes the program inside a debugging environment with the original system context in mind
+    /// Executes the program inside a debugging environment respecting the original system context.
+    /// This will open an interactive shell
     pub fn exec<T: System>(&mut self, program: &Program, system: &mut T) -> Result<u8> {
         let mut debugger_system = DebuggerSystem::new(system);
 

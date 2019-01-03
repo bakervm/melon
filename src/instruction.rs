@@ -154,24 +154,25 @@ impl Distribution<Register> for Standard {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::mem::size_of;
 
     #[test]
     fn instruction_size() {
-        let size = ::std::mem::size_of::<Instruction>();
+        let size = size_of::<Instruction>();
 
         assert_eq!(size, 4);
     }
 
     #[test]
     fn register_size() {
-        let size = ::std::mem::size_of::<Register>();
+        let size = size_of::<Register>();
 
         assert_eq!(size, 1);
     }
 
     #[test]
     fn type_size() {
-        let size = ::std::mem::size_of::<IntegerType>();
+        let size = size_of::<IntegerType>();
 
         assert_eq!(size, 1);
     }
