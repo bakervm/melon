@@ -43,11 +43,11 @@ impl Program {
 
     /// Decodes a program from MsgPack encoded and gzipped image data
     pub fn from_slice(vec: &[u8]) -> Result<Program> {
-        let mut decoder = GzDecoder::new(&vec[..]);
+        let mut decoder = GzDecoder::new(vec);
         let mut msgpack_buf = Vec::new();
         decoder.read_to_end(&mut msgpack_buf)?;
 
-        rmp_serde::from_slice(&msgpack_buf[..]).map_err(|e| format_err!("Error: {}", e))
+        rmp_serde::from_slice(msgpack_buf.as_slice()).map_err(|e| format_err!("Error: {}", e))
     }
 
     /// Encodes the program as MsgPack encoded and gzipped image data
@@ -55,7 +55,7 @@ impl Program {
         let msgpack_buf = rmp_serde::to_vec(&self)?;
 
         let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-        encoder.write_all(&msgpack_buf[..])?;
+        encoder.write_all(msgpack_buf.as_slice())?;
         let gz_buf = encoder.finish()?;
 
         Ok(gz_buf)
@@ -66,7 +66,7 @@ impl Program {
         let gz_buf = self.to_vec()?;
 
         let mut file = File::create(path)?;
-        file.write_all(&gz_buf[..])?;
+        file.write_all(gz_buf.as_slice())?;
         file.flush()?;
 
         Ok(())
