@@ -33,7 +33,7 @@ impl System for MyPerfectSystem {
 }
 
 fn main() {
-    let mut rng = thread_rng();
+    let rng = thread_rng();
 
     let program = ProgramBuilder::new(MyPerfectSystem::ID)
         .instructions(rng.sample_iter(&Standard).take(LIMIT).collect())

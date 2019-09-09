@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn save_and_load() {
-        let mut rng = thread_rng();
+        let rng = thread_rng();
         let tmp_dir = gen_dir();
 
         let file_name = tmp_dir

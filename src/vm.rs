@@ -2462,7 +2462,7 @@ mod tests {
 
     #[test]
     fn fuzz_instructions() {
-        let mut rng = thread_rng();
+        let rng = thread_rng();
 
         let mut vm = VM::default();
         let mut system = helper::generate_system();
