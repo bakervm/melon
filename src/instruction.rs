@@ -2,6 +2,7 @@
 
 use crate::typedef::*;
 use rand_derive::Rand;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Rand)]
 pub enum Instruction {

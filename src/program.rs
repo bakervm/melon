@@ -3,6 +3,7 @@ use crate::instruction::Instruction;
 use crate::typedef::*;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use semver::Version;
+use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::{Read, Write},

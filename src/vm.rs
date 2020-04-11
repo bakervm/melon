@@ -5,6 +5,7 @@ use crate::system::System;
 use crate::typedef::*;
 use byteorder::{BigEndian, ByteOrder};
 use failure::ResultExt;
+use serde::{Deserialize, Serialize};
 use std::collections::LinkedList;
 
 type Endianess = BigEndian;
