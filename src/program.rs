@@ -4,7 +4,7 @@ use crate::typedef::*;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use semver::Version;
 use std::{
-    fs::File,
+    fs,
     io::{Read, Write},
     path::Path,
 };
@@ -31,10 +31,7 @@ pub struct Program {
 impl Program {
     /// Loads a MsgPack encoded and gzipped melon image from the given file
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Program> {
-        let mut file = File::open(path)?;
-
-        let mut gz_buf = Vec::new();
-        file.read_to_end(&mut gz_buf)?;
+        let gz_buf = fs::read(path)?;
 
         let res = Self::from_slice(&gz_buf)?;
 
@@ -65,9 +62,7 @@ impl Program {
     pub fn save_as<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let gz_buf = self.to_vec()?;
 
-        let mut file = File::create(path)?;
-        file.write_all(gz_buf.as_slice())?;
-        file.flush()?;
+        fs::write(path, gz_buf)?;
 
         Ok(())
     }
