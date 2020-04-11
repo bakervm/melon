@@ -6,7 +6,7 @@ use crate::typedef::*;
 use byteorder::{BigEndian, ByteOrder};
 use failure::ResultExt;
 use serde::{Deserialize, Serialize};
-use std::collections::LinkedList;
+use std::{cmp::Ordering as StdOrdering, collections::LinkedList};
 
 type Endianess = BigEndian;
 
@@ -747,12 +747,10 @@ impl VM {
     }
 
     fn do_compare<T: Ord>(num_a: &T, num_b: &T) -> Ordering {
-        if num_a < num_b {
-            Ordering::Less
-        } else if num_a > num_b {
-            Ordering::Greater
-        } else {
-            Ordering::Equal
+        match num_a.cmp(num_b) {
+            StdOrdering::Less => Ordering::Less,
+            StdOrdering::Greater => Ordering::Greater,
+            StdOrdering::Equal => Ordering::Equal,
         }
     }
 
